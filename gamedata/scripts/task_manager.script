@@ -69,16 +69,14 @@ function CRandomTask:give_task(task_id,task_giver_id)
 			m_data.task_objects[task_id] = nil
 		end
 		
-		self.task_info[task_id] = task_objects.CGeneralTask(task_id)
-		self.task_info[task_id].task_giver_id = task_giver_id
+		self.task_info[task_id] = task_objects.CGeneralTask(task_id, task_giver_id)
 		self.task_info[task_id]:give_task()
 		
 		--self.task_info[task_id]:save_state(m_data)
 		return
 	end
 	
-	self.task_info[task_id] = task_objects.CGeneralTask(task_id)
-	self.task_info[task_id].task_giver_id = task_giver_id
+	self.task_info[task_id] = task_objects.CGeneralTask(task_id, task_giver_id)
 	self.task_info[task_id]:give_task()
 end
 

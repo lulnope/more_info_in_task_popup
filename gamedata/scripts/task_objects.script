@@ -31,11 +31,12 @@ C++ class task {
 ]]
 
 class "CGeneralTask"
-function CGeneralTask:__init(id)
+function CGeneralTask:__init(id, task_giver_id)
 	self.loaded = false
 	
 	local task_ini 		= task_manager.task_ini
 	self.id				= id
+  self.task_giver_id = task_giver_id
 	self.stage			= 0
 
 	self.title			= task_ini:r_string_ex(id,"title") or "TITLE_DOESNT_EXIST"
@@ -118,6 +119,87 @@ function CGeneralTask:__init(id)
 	self.dont_send_update_news = task_ini:r_bool_ex(id,"dont_send_update_news",false)
 end
 
+function CGeneralTask:get_time_elapsed()
+  local secondsElapsed = game.get_game_time():diffSec(self.inited_time)
+  local minutesElapsed = math.floor(secondsElapsed / 60)
+  local hoursElapsed = math.floor(minutesElapsed / 60)
+  local daysElapsed = math.floor(hoursElapsed / 24)
+
+  if daysElapsed > 0 then
+    return daysElapsed .. " days"
+  elseif hoursElapsed > 0 then
+    return hoursElapsed .. " hours"
+  elseif minutesElapsed > 0 then
+    return minutesElapsed .. " minutes"
+  else
+    return secondsElapsed .. " seconds"
+  end
+end
+
+function CGeneralTask:generate_descr(descr, target_id)
+  -- utils_data.debug_write(strformat("CGeneralTask:generate_descr %s %s %s",self.id, descr, target_id or "NO_TARGET"))
+  local timeElapsed = self:get_time_elapsed()
+  local descr_text = (descr and game.translate_string(descr)) or "NO_DESCR"
+
+  local format = "Task started %s ago\\nDescription: %s"
+  local format_args = { timeElapsed, descr_text }
+
+
+  local target = target_id and alife_object(target_id)
+  local target_text = target and task_text_formatter.build_text(target)
+  if(target_text and target_id ~= self.task_giver_id) then
+    format = format .. "\\n \\nTarget:\\n%s"
+    format_args[#format_args + 1] = target_text
+  end
+
+
+  local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
+  local task_giver_text = task_giver and task_text_formatter.build_text(task_giver)
+  if(task_giver_text) then
+    format = format .. "\\n \\nTask giver:\\n%s"
+    format_args[#format_args + 1] = task_giver_text
+  end
+
+  if target_id == self.task_giver_id and target_id ~= nil then
+    format = format .. "\\n \\nReturn for your reward."
+  end
+
+  return strformat(format, unpack(format_args))
+end
+
+function CGeneralTask:next_state()
+  if not db.actor then
+    return {
+      title_updated = false,
+      descr_updated = false,
+      target_updated = false
+    }
+  end
+
+  local t_title = task_functor[self.title_functor](self.id, "title", self.title, self)
+  local title_updated = self.current_title ~= t_title
+
+  local t_descr = task_functor[self.descr_functor](self.id, "descr", self.descr, self)
+  local descr_updated = self.current_descr ~= t_descr
+
+  local t_target = task_functor[self.target_functor](self.id, "target", self.target, self)
+  local target_updated = self.current_target ~= t_target
+
+  return {
+    next_title = t_title,
+    title_updated = title_updated,
+
+    next_descr = t_descr,
+    descr_updated = descr_updated,
+    descr_full_text = self:generate_descr(t_descr, t_target),
+
+    next_target = t_target,
+    target_updated = target_updated,
+
+    updated = title_updated or descr_updated or target_updated
+  }
+end
+
 function CGeneralTask:get_title()
 	return self.title or ""
 end 
@@ -128,6 +210,7 @@ end
 
 --' Issue of quest
 function CGeneralTask:give_task()
+  utils_data.debug_write(strformat("CGeneralTask:give_task %s %s ",self.id, self.task_giver_id or "NO_TASK_GIVER"))
 	local t = db.actor and db.actor:get_task(self.id, true) or CGameTask()
 	t:set_id(tostring(self.id))
 	if(self.storyline) then
@@ -168,10 +251,15 @@ function CGeneralTask:give_task()
 	self.t = t
 	self.stage = 0
 	self.forced_status = nil
+
+  local d = self:generate_descr(self.current_descr, self.current_target)
+  t:set_description(d)
 end
 --' Checking the current execution of the quest
 function CGeneralTask:check_task(tm)
 	local tg = time_global()
+
+  -- printf("CHECK TASK RUNNING 1")
 	
 	if (self.check_time and self.last_check_task == nil and tg < self.check_time) then
 		return
@@ -187,26 +275,31 @@ function CGeneralTask:check_task(tm)
 		return
 	end
 
+  -- printf("CHECK TASK RUNNING 2")
+
 	self.check_time = tg + math.random(500,1000) --+ (self.prior*10)
 	local task_updated = false
+
+  local next_state = self:next_state()
 	
-	local t_tile = task_functor[self.title_functor](self.id, "title", self.title, self)
-	if self.current_title ~= t_tile then
+	local t_title = next_state.next_title
+	if self.current_title ~= t_title then
 		--printf("task [%s] updated due to title change from [%s] to [%s]", tostring(self.id), tostring(self.current_title), tostring(t_tile))
 		task_updated = true
-		self.current_title = t_tile
-		self.t:set_title(game.translate_string(t_tile))
+		self.current_title = t_title
+		self.t:set_title(game.translate_string(t_title))
 	end
 
-	local t_descr = task_functor[self.descr_functor](self.id, "descr", self.descr, self)
+	local t_descr = next_state.next_descr
+  self.t:set_description(next_state.descr_full_text) --this makes it so that if location of a target changes you get fresh info
 	if self.current_descr ~= t_descr then
 		--printf("task [%s] updated due to description change from [%s] to [%s]", tostring(self.id), tostring(self.current_descr), tostring(t_descr))
 		task_updated = true
 		self.current_descr = t_descr
-		self.t:set_description(game.translate_string(t_descr))
+		self.t:set_description(next_state.descr_full_text)
 	end
 
-	local t_target = task_functor[self.target_functor](self.id, "target", self.target, self)
+	local t_target = next_state.next_target
 	self:check_level(t_target)
 	
 	--printf("%s map_location=%s id=%s target=%s",self.current_title,self.t:get_map_location(),self.t:get_map_object_id(),t_target)

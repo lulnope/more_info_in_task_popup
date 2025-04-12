@@ -1,3 +1,5 @@
+local TASK_TEXT_FORMATTER_DEBUG = false;
+
 function build_text(se_obj)
   local text = "";
 
@@ -12,19 +14,35 @@ function build_text(se_obj)
   elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
     text = build_squad_text(se_obj)
   else
-    text = "Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n" .. build_location_text(se_obj)
+    if TASK_TEXT_FORMATTER_DEBUG then
+      text = "Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n" .. build_location_text(se_obj)
+    else
+      text = build_location_text(se_obj)
+    end
   end
 
   return " " .. text
 end
 
-function build_location_text(se_obj)
+function build_location_text(se_obj, squad)
   local default_color = utils_xml.get_color("pda_white")
   local location = dynamic_news_helper.GetPointDescription(se_obj)
-  return default_color .. game.translate_string("st_location") .. " " .. location
+
+  local current_target = squad and squad.current_target_id and alife_object(squad.current_target_id)
+  local destination = current_target and dynamic_news_helper.GetPointDescription(current_target)
+
+  local location_str = default_color .. game.translate_string("st_location") .. " " .. location
+
+  if (not destination) or location == destination then
+    return location_str, nil
+
+  else
+    return location_str, default_color .. game.translate_string("st_target") .. ": " .. destination
+  end
+  
 end
 
-function build_character_text(se_obj, include_location)  
+function build_character_text(se_obj, include_location_and_target)  
   local format = ""
   local format_args = {}
   local default_color = utils_xml.get_color("pda_white")
@@ -74,10 +92,15 @@ function build_character_text(se_obj, include_location)
     format_args[#format_args + 1] = repu_str
   end
 	
-	if include_location then	
+	if include_location_and_target then	
     format = format .. "%s \\n "
-		local location_str = build_location_text(se_obj)
+    local squad = se_obj.group_id and se_obj.group_id ~= 65535 and alife_object(se_obj.group_id)
+		local location_str, destination_str = build_location_text(se_obj, squad)
     format_args[#format_args + 1] = location_str
+    if destination_str then
+      format = format .. "%s \\n "
+      format_args[#format_args + 1] = destination_str
+    end
 	end
 	
 	return strformat(format, unpack(format_args))
@@ -97,8 +120,14 @@ function build_squad_text(obj)
 	if text ~= "" then
 		-- Remove last newline symbols since they are not needed
 		text = string.sub(text, 1, string.len(text) - 9)
-    text = text .. "\\n \\n " .. build_location_text(obj)
 	end
+
+  local location_str, destination_str = build_location_text(obj, obj)
+  text = text .. "\\n \\n " .. location_str
+
+  if destination_str then
+    text = text .. "\\n " .. destination_str
+  end
 	
 	return text	
 end

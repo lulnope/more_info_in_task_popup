@@ -132,7 +132,7 @@ function CGeneralTask:get_time_elapsed()
   elseif minutesElapsed > 0 then
     return minutesElapsed .. " minutes"
   else
-    return secondsElapsed .. " seconds"
+    return math.floor(secondsElapsed) .. " seconds"
   end
 end
 

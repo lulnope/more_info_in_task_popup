@@ -28,7 +28,7 @@ function build_location_text(se_obj, squad)
   local default_color = utils_xml.get_color("pda_white")
   local location = dynamic_news_helper.GetPointDescription(se_obj)
 
-  local current_target = squad and squad.current_target_id and alife_object(squad.current_target_id)
+  local current_target = squad and squad.assigned_target_id and alife_object(squad.assigned_target_id)
   local destination = current_target and dynamic_news_helper.GetPointDescription(current_target)
 
   local location_str = default_color .. game.translate_string("st_location") .. " " .. location

@@ -1,27 +1,30 @@
 local TASK_TEXT_FORMATTER_DEBUG = false;
 
-function build_text(se_obj)
-  local text = "";
+function build_text(se_obj, indent_size)
+  local lines = {};
 
   if IsStalker(se_obj) or se_obj:clsid() == clsid.trader or se_obj:clsid() == clsid.script_trader then
-    text = build_character_text(se_obj, true)
+    lines = build_character_text(se_obj, true)
   elseif IsMonster(se_obj) then
-    text = build_location_text(se_obj)
+    lines = build_location_text(se_obj)
   elseif IsAnomaly(se_obj) then
-    text = build_location_text(se_obj)
+    lines = build_location_text(se_obj)
   elseif se_obj:clsid() == clsid.smart_terrain then
-    text = build_location_text(se_obj)
+    lines = build_location_text(se_obj)
   elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
-    text = build_squad_text(se_obj)
+    lines = build_squad_text(se_obj)
   else
     if TASK_TEXT_FORMATTER_DEBUG then
-      text = "Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n" .. build_location_text(se_obj)
+      lines = {"Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n", unpack(build_location_text(se_obj))}
     else
-      text = build_location_text(se_obj)
+      lines = build_location_text(se_obj)
     end
   end
 
-  return " " .. text
+  local indent = string.rep(" ", indent_size)
+  local indent_s = indent .. "%s"
+  local format = indent_s .. string.rep(" \\n" .. indent_s, #lines - 1)
+  return strformat(format, unpack(lines))
 end
 
 function build_location_text(se_obj, squad)
@@ -34,25 +37,23 @@ function build_location_text(se_obj, squad)
   local location_str = default_color .. game.translate_string("st_location") .. " " .. location
 
   if (not destination) or location == destination then
-    return location_str, nil
+    return {location_str}
 
   else
-    return location_str, default_color .. game.translate_string("st_target") .. ": " .. destination
+    return {location_str, default_color .. game.translate_string("st_target") .. ": " .. destination}
   end
   
 end
 
 function build_character_text(se_obj, include_location_and_target)  
-  local format = ""
-  local format_args = {}
+  local lines = TASK_TEXT_FORMATTER_DEBUG and {"STALKER"} or {}
   local default_color = utils_xml.get_color("pda_white")
 
 
   local name = se_obj.character_name and se_obj:character_name()
   if name then
     local name_str = default_color .. game.translate_string("st_mm_new_game_name") .. " " .. name
-    format = format .. "%s \\n "
-    format_args[#format_args + 1] = name_str
+    lines[#lines + 1] = name_str
   end
   
 
@@ -66,16 +67,14 @@ function build_character_text(se_obj, include_location_and_target)
     end
 
     local faction_str = default_color .. game.translate_string("ui_st_community") .. ": " .. faction_color .. game.translate_string(community) .. "%c[default]"
-    format = format .. "%s \\n "
-    format_args[#format_args + 1] = faction_str
+    lines[#lines + 1] = faction_str
   end
 
 
   local rank = se_obj.rank and se_obj:rank()
   if rank then
     local rank_str = default_color .. game.translate_string("ui_st_rank") .. ": " .. "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
-    format = format .. "%s \\n "
-    format_args[#format_args + 1] = rank_str
+    lines[#lines + 1] = rank_str
   end
 	
 
@@ -88,46 +87,59 @@ function build_character_text(se_obj, include_location_and_target)
       repu_color = "%c[255,1,255,1]"
     end
     local repu_str = default_color .. game.translate_string("ui_st_reputation") .. ": " .. repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
-    format = format .. "%s \\n "
-    format_args[#format_args + 1] = repu_str
+    lines[#lines + 1] = repu_str
   end
 	
 	if include_location_and_target then	
-    format = format .. "%s \\n "
     local squad = se_obj.group_id and se_obj.group_id ~= 65535 and alife_object(se_obj.group_id)
-		local location_str, destination_str = build_location_text(se_obj, squad)
-    format_args[#format_args + 1] = location_str
-    if destination_str then
-      format = format .. "%s \\n "
-      format_args[#format_args + 1] = destination_str
-    end
+		local location_lines = build_location_text(se_obj, squad)
+    lines = append_table(lines, location_lines)
 	end
-	
-	return strformat(format, unpack(format_args))
+
+  return lines
 end
 
 function build_squad_text(obj)
-	local text = ""
-	
-	for k in obj:squad_members() do
+  local lines = TASK_TEXT_FORMATTER_DEBUG and {"SQUAD"} or {}
+
+  if obj:npc_count() == 0 then
+    return lines
+  end
+
+  local squad_members = {}
+  for k in obj:squad_members() do
 		local se_obj = k.object or alife_object(k.id)
-		if se_obj then
-			text = text .. build_character_text(se_obj, false) .. "\\n \\n \\n "
+    if se_obj then
+      squad_members[#squad_members + 1] = se_obj
 		end
-	end
-	
-	
-	if text ~= "" then
-		-- Remove last newline symbols since they are not needed
-		text = string.sub(text, 1, string.len(text) - 9)
-	end
-
-  local location_str, destination_str = build_location_text(obj, obj)
-  text = text .. "\\n \\n " .. location_str
-
-  if destination_str then
-    text = text .. "\\n " .. destination_str
+  end
+  
+  if obj:npc_count() == 1 then
+    return build_character_text(squad_members[1], true)
   end
 	
-	return text	
+  for _,se_obj in pairs(squad_members) do
+    lines = append_table(lines, build_character_text(se_obj, false))
+    lines[#lines + 1] = " "
+  end
+
+  local location_lines = build_location_text(obj, obj)
+  lines = append_table(lines, location_lines)
+	
+	return lines	
+end
+
+function append_table(dest, src)
+  for i = 1, #src do
+    dest[#dest + 1] = src[i]
+  end
+  return dest
+end
+
+function concat_tables(t1,t2)
+  local t3 = {unpack(t1)}
+  for i=1,#t2 do
+      t3[#t1+1] = t2[i]
+  end
+  return t3
 end

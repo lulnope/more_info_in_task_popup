@@ -141,12 +141,12 @@ function CGeneralTask:generate_descr(descr, target_id)
   local timeElapsed = self:get_time_elapsed()
   local descr_text = (descr and game.translate_string(descr)) or "NO_DESCR"
 
-  local format = "Task started %s ago\\nDescription: %s"
+  local format = "Task started %s ago\\n%s"
   local format_args = { timeElapsed, descr_text }
-
+  local indent = 3
 
   local target = target_id and alife_object(target_id)
-  local target_text = target and task_text_formatter.build_text(target)
+  local target_text = target and task_text_formatter.build_text(target, indent)
   if(target_text and target_id ~= self.task_giver_id) then
     format = format .. "\\n \\nTarget:\\n%s"
     format_args[#format_args + 1] = target_text
@@ -154,7 +154,7 @@ function CGeneralTask:generate_descr(descr, target_id)
 
 
   local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
-  local task_giver_text = task_giver and task_text_formatter.build_text(task_giver)
+  local task_giver_text = task_giver and task_text_formatter.build_text(task_giver, indent)
   if(task_giver_text) then
     format = format .. "\\n \\nTask giver:\\n%s"
     format_args[#format_args + 1] = task_giver_text

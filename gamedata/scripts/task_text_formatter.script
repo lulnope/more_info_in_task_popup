@@ -3,14 +3,14 @@ local TASK_TEXT_FORMATTER_DEBUG = false;
 function build_text(se_obj, indent_size)
   local lines = {};
 
-  if IsStalker(se_obj) or se_obj:clsid() == clsid.trader or se_obj:clsid() == clsid.script_trader then
+  if is_human(se_obj) then
     lines = build_character_text(se_obj, true)
   elseif IsMonster(se_obj) then
     lines = build_location_text(se_obj)
   elseif IsAnomaly(se_obj) then
     lines = build_location_text(se_obj)
   elseif se_obj:clsid() == clsid.smart_terrain then
-    lines = build_location_text(se_obj)
+    lines = build_smart_terrain_text(se_obj)
   elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
     lines = build_squad_text(se_obj)
   else
@@ -25,6 +25,39 @@ function build_text(se_obj, indent_size)
   local indent_s = indent .. "%s"
   local format = indent_s .. string.rep(" \\n" .. indent_s, #lines - 1)
   return strformat(format, unpack(lines))
+end
+
+function is_human(se_obj) 
+  return IsStalker(se_obj) or se_obj:clsid() == clsid.trader or se_obj:clsid() == clsid.script_trader
+end
+
+function build_smart_terrain_text(smart_terrain)
+  local squad_ids = {}
+  for npc_id, _ in pairs(smart_terrain.npc_info) do
+    local npc = alife_object(npc_id)
+    if is_human(npc) and npc.group_id and npc.group_id ~= 65535 then
+      squad_ids[npc.group_id] = true
+    end
+  end
+
+
+  local lines = {}
+  local index = 1
+  for squad_id, _ in pairs(squad_ids) do
+    if index ~= 1 then
+      lines[#lines + 1] = " "
+    end
+    local squad = alife_object(squad_id)
+    local squad_lines = build_squad_text(squad)
+    lines = append_table(lines, squad_lines)
+    index = index + 1
+  end
+
+  if #lines == 0 then
+    return build_location_text(smart_terrain)
+  end
+
+  return lines
 end
 
 function build_location_text(se_obj, squad)
@@ -42,7 +75,53 @@ function build_location_text(se_obj, squad)
   else
     return {location_str, default_color .. game.translate_string("st_target") .. ": " .. destination}
   end
-  
+end
+
+function build_character_text_single_line(se_obj)
+  local infos = TASK_TEXT_FORMATTER_DEBUG and {"STALKER"} or {}
+  local default_color = utils_xml.get_color("pda_white")
+
+
+  local name = se_obj.character_name and se_obj:character_name()
+  if name then
+    local name_str = default_color .. name
+    infos[#infos + 1] = name_str
+  end
+
+  local community = se_obj.community and se_obj:community()
+  if community then
+    local faction_color = "%c[255,255,255,1]"
+    if (game_relations.is_factions_enemies(db.actor:character_community(), community)) then
+      faction_color = "%c[255,255,1,1]"
+    elseif (game_relations.is_factions_friends(db.actor:character_community(), community)) then
+      faction_color = "%c[255,1,255,1]"
+    end
+
+    local faction_str = faction_color .. game.translate_string(community) .. "%c[default]"
+    infos[#infos + 1] = faction_str
+  end
+
+
+  local rank = se_obj.rank and se_obj:rank()
+  if rank then
+    local rank_str = "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
+    infos[#infos + 1] = rank_str
+  end
+
+	local reputation = se_obj.reputation and se_obj:reputation()
+  if reputation then
+    local repu_color = "%c[255,255,255,1]"
+    if (reputation <= -500) then
+      repu_color = "%c[255,255,1,1]"
+    elseif (reputation >= 500) then
+      repu_color = "%c[255,1,255,1]"
+    end
+    local repu_str = repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
+    infos[#infos + 1] = repu_str
+  end
+
+  local format = "%s" .. string.rep(", %s", #infos -1)
+  return { strformat(format, unpack(infos)) }
 end
 
 function build_character_text(se_obj, include_location_and_target)  
@@ -55,7 +134,6 @@ function build_character_text(se_obj, include_location_and_target)
     local name_str = default_color .. game.translate_string("st_mm_new_game_name") .. " " .. name
     lines[#lines + 1] = name_str
   end
-  
 
   local community = se_obj.community and se_obj:community()
   if community then
@@ -76,7 +154,6 @@ function build_character_text(se_obj, include_location_and_target)
     local rank_str = default_color .. game.translate_string("ui_st_rank") .. ": " .. "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
     lines[#lines + 1] = rank_str
   end
-	
 
 	local reputation = se_obj.reputation and se_obj:reputation()
   if reputation then
@@ -89,7 +166,6 @@ function build_character_text(se_obj, include_location_and_target)
     local repu_str = default_color .. game.translate_string("ui_st_reputation") .. ": " .. repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
     lines[#lines + 1] = repu_str
   end
-	
 	if include_location_and_target then	
     local squad = se_obj.group_id and se_obj.group_id ~= 65535 and alife_object(se_obj.group_id)
 		local location_lines = build_location_text(se_obj, squad)
@@ -119,8 +195,7 @@ function build_squad_text(obj)
   end
 	
   for _,se_obj in pairs(squad_members) do
-    lines = append_table(lines, build_character_text(se_obj, false))
-    lines[#lines + 1] = " "
+    lines = append_table(lines, build_character_text_single_line(se_obj))
   end
 
   local location_lines = build_location_text(obj, obj)

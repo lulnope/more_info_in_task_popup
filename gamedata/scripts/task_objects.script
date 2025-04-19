@@ -58,6 +58,7 @@ function CGeneralTask:__init(id, task_giver_id)
 
 	self.repeat_timeout	= task_ini:r_float_ex(id,"repeat_timeout")
 	self.timeout = nil
+  self.history = {}
 	
 	--' Terms of execution and failure of the quest
 	local i = 0
@@ -126,45 +127,59 @@ function CGeneralTask:get_time_elapsed()
   local daysElapsed = math.floor(hoursElapsed / 24)
 
   if daysElapsed > 0 then
-    return daysElapsed .. " days"
+    return daysElapsed .. (" ") .. game.translate_string("st_task_time_6")
   elseif hoursElapsed > 0 then
-    return hoursElapsed .. " hours"
+    return hoursElapsed .. (" ") .. game.translate_string("st_task_time_7")
   elseif minutesElapsed > 0 then
-    return minutesElapsed .. " minutes"
+    return minutesElapsed .. (" ") .. game.translate_string("st_task_time_8")
   else
-    return math.floor(secondsElapsed) .. " seconds"
+    return math.floor(secondsElapsed) .. (" ") .. game.translate_string("st_task_time_9")
   end
 end
 
 function CGeneralTask:generate_descr(descr, target_id)
   -- utils_data.debug_write(strformat("CGeneralTask:generate_descr %s %s %s",self.id, descr, target_id or "NO_TARGET"))
   local timeElapsed = self:get_time_elapsed()
-  local descr_text = (descr and game.translate_string(descr)) or "NO_DESCR"
+  local descr_text = (descr and game.translate_string(descr)) or game.translate_string("st_task_time_10")
 
-  local format = "Task started %s ago\\n%s"
-  local format_args = { timeElapsed, descr_text }
+  local lines = {
+    game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string("st_task_time_2"),
+    descr_text,
+  };
+
   local indent = 3
 
   local target = target_id and alife_object(target_id)
   local target_text = target and task_text_formatter.build_text(target, indent)
   if(target_text and target_id ~= self.task_giver_id) then
-    format = format .. "\\n \\nTarget:\\n%s"
-    format_args[#format_args + 1] = target_text
+    lines[#lines + 1] = " "
+    lines[#lines + 1] = game.translate_string("st_task_time_3")
+    lines[#lines + 1] = target_text
   end
 
 
   local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
   local task_giver_text = task_giver and task_text_formatter.build_text(task_giver, indent)
   if(task_giver_text) then
-    format = format .. "\\n \\nTask giver:\\n%s"
-    format_args[#format_args + 1] = task_giver_text
+    lines[#lines + 1] = " "
+    lines[#lines + 1] = game.translate_string("st_task_time_4")
+    lines[#lines + 1] = task_giver_text
   end
 
   if target_id == self.task_giver_id and target_id ~= nil then
-    format = format .. "\\n \\nReturn for your reward."
+    lines[#lines + 1] = " "
+    lines[#lines + 1] = game.translate_string("st_task_time_5")
   end
 
-  return strformat(format, unpack(format_args))
+  if self.history then
+    for k, v in pairs(self.history) do
+      lines[#lines + 1] = " "
+      lines[#lines + 1] = v.text
+    end
+  end
+
+  local format = "%s" .. string.rep(" \\n%s", #lines - 1)
+  return strformat(format, unpack(lines))
 end
 
 function CGeneralTask:next_state()
@@ -184,6 +199,23 @@ function CGeneralTask:next_state()
 
   local t_target = task_functor[self.target_functor](self.id, "target", self.target, self)
   local target_updated = self.current_target ~= t_target
+
+  local target_obj = t_target and alife_object(t_target)
+
+  -- so in lua_help clsid 151 is wpn_ammo_m209_s which is weird because that's the clsid used for stashes in quests like "drug run" and "search the stash".
+  if target_obj and target_obj:clsid() == 151 then
+    local text = ""
+    local location = dynamic_news_helper.GetPointDescription(target_obj)
+    if task_text_formatter.TASK_TEXT_FORMATTER_DEBUG then
+      local section = target_obj.section and target_obj:section() or "NO_SECTION()"
+      text = strformat("Stage: %s | clsid: %s | Section: %s | name: %s | location: %s", self.stage, target_obj:clsid(), section, target_obj:name(), location)
+    else
+      text = game.translate_string("st_task_time_12") .. " " .. location
+    end
+    self.history[self.stage] = {
+      text = text,
+    }
+  end
 
   return {
     next_title = t_title,
@@ -338,6 +370,13 @@ function CGeneralTask:check_task(tm)
 			self.last_check_task = t
 		end
 	end
+
+  -- if target_obj and IsItem(target_obj) then
+  --   self.history[self.stage] = {
+  --     target_id=t_target,
+  --     text="Item name: " .. target_obj:name() .. " Location: " .. task_text_formatter.build_location_text(target_obj),
+  --   }
+  -- end
 end
 
 --' Initializing the reward
@@ -528,6 +567,7 @@ function CGeneralTask:save_state(m_data)
 	m_data.task_objects[self.id].current_target = self.current_target
 	m_data.task_objects[self.id].stage = self.stage
 	m_data.task_objects[self.id].task_giver_id = self.task_giver_id
+  m_data.task_objects[self.id].history = self.history
 	--utils_data.debug_write(strformat("CGeneralTask:save_state %s AFTER",self.id))
 end 
 
@@ -544,6 +584,7 @@ function CGeneralTask:load_state(m_data)
 	self.current_target = m_data.task_objects[self.id].current_target
 	self.stage = m_data.task_objects[self.id].stage
 	self.task_giver_id =  m_data.task_objects[self.id].task_giver_id
+  self.history = m_data.task_objects[self.id].history or {}
 	m_data.task_objects[self.id] = nil
 	
 	self.loaded = true

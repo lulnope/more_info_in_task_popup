@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+	<string id="st_task_time_1">
+		<text>Task started</text>
+	</string>
+	
+	<string id="st_task_time_2">
+		<text>ago</text>
+	</string>
+	
+	<string id="st_task_time_3">
+		<text>Target:</text>
+	</string>
+	
+	<string id="st_task_time_4">
+		<text>Task giver:</text>
+	</string>
+	
+	<string id="st_task_time_5">
+		<text>Return for your reward:</text>
+	</string>
+	
+	<string id="st_task_time_6">
+		<text>days</text>
+	</string>
+	
+	<string id="st_task_time_7">
+		<text>hours</text>
+	</string>
+	
+	<string id="st_task_time_8">
+		<text>minutes</text>
+	</string>
+	
+	<string id="st_task_time_9">
+		<text>seconds</text>
+	</string>
+	
+	<string id="st_task_time_10">
+		<text>No description</text>
+	</string>
+
+  <string id="st_task_time_11">
+		<text>Squad</text>
+	</string>
+
+  <string id="st_task_time_12">
+		<text>Stash location:</text>
+	</string>
+</string_table>

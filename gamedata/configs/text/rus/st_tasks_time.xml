@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+  <string id="st_task_time_1">
+    <text>Задание взято</text>
+  </string>
+
+  <string id="st_task_time_2">
+    <text>назад.</text>
+  </string>
+
+  <string id="st_task_time_3">
+    <text>Информация:</text>
+  </string>
+
+  <string id="st_task_time_4">
+    <text>Квестодатель:</text>
+  </string>
+
+  <string id="st_task_time_5">
+    <text>Возвращайтесь за своей наградой:</text>
+  </string>
+
+  <string id="st_task_time_6">
+    <text>дня/дней</text>
+  </string>
+
+  <string id="st_task_time_7">
+    <text>часа/часов</text>
+  </string>
+
+  <string id="st_task_time_8">
+    <text>минут</text>
+  </string>
+
+  <string id="st_task_time_9">
+    <text>секунд</text>
+  </string>
+
+  <string id="st_task_time_10">
+    <text>Нет описания</text>
+  </string>
+
+  <string id="st_task_time_11">
+		<text>Отряд</text>
+	</string>
+
+  <string id="st_task_time_12">
+		<text>место тайника:</text>
+	</string>
+</string_table>

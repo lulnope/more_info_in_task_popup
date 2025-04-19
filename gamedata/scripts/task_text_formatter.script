@@ -12,7 +12,7 @@ function build_text(se_obj, indent_size)
   elseif se_obj:clsid() == clsid.smart_terrain then
     lines = build_smart_terrain_text(se_obj)
   elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
-    lines = build_squad_text(se_obj)
+    lines = build_squad_text(se_obj, false, true)
   else
     if TASK_TEXT_FORMATTER_DEBUG then
       lines = {"Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n", unpack(build_location_text(se_obj))}
@@ -33,10 +33,12 @@ end
 
 function build_smart_terrain_text(smart_terrain)
   local squad_ids = {}
+  local squad_count = 0
   for npc_id, _ in pairs(smart_terrain.npc_info) do
     local npc = alife_object(npc_id)
     if is_human(npc) and npc.group_id and npc.group_id ~= 65535 then
       squad_ids[npc.group_id] = true
+      squad_count = squad_count + 1
     end
   end
 
@@ -45,17 +47,24 @@ function build_smart_terrain_text(smart_terrain)
   local index = 1
   for squad_id, _ in pairs(squad_ids) do
     if index ~= 1 then
-      lines[#lines + 1] = " "
+      -- lines[#lines + 1] = " "
     end
+
+    if squad_count > 1 then
+      -- lines[#lines + 1] = game.translate_string("st_task_time_11") .. " #" .. index .. ":"
+    end
+
     local squad = alife_object(squad_id)
-    local squad_lines = build_squad_text(squad)
+    local squad_lines = build_squad_text(squad, true, false)
     lines = append_table(lines, squad_lines)
     index = index + 1
   end
-
-  if #lines == 0 then
-    return build_location_text(smart_terrain)
+  
+  if #lines > 1 then
+    lines[#lines + 1] = " "
   end
+  location_lines = build_location_text(smart_terrain)
+  lines = append_table(lines, location_lines)
 
   return lines
 end
@@ -175,7 +184,7 @@ function build_character_text(se_obj, include_location_and_target)
   return lines
 end
 
-function build_squad_text(obj)
+function build_squad_text(obj, force_single_line, include_location_and_goal)
   local lines = TASK_TEXT_FORMATTER_DEBUG and {"SQUAD"} or {}
 
   if obj:npc_count() == 0 then
@@ -190,7 +199,7 @@ function build_squad_text(obj)
 		end
   end
   
-  if obj:npc_count() == 1 then
+  if obj:npc_count() == 1 and (not force_single_line) then
     return build_character_text(squad_members[1], true)
   end
 	
@@ -198,8 +207,10 @@ function build_squad_text(obj)
     lines = append_table(lines, build_character_text_single_line(se_obj))
   end
 
-  local location_lines = build_location_text(obj, obj)
-  lines = append_table(lines, location_lines)
+  if include_location_and_goal then
+    local location_lines = build_location_text(obj, obj)
+    lines = append_table(lines, location_lines)
+  end
 	
 	return lines	
 end

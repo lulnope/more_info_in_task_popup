@@ -87,7 +87,7 @@ function build_location_text(se_obj, squad)
 end
 
 function build_character_text_single_line(se_obj)
-  local infos = TASK_TEXT_FORMATTER_DEBUG and {"STALKER"} or {}
+  local infos = {}
   local default_color = utils_xml.get_color("pda_white")
 
 
@@ -134,7 +134,7 @@ function build_character_text_single_line(se_obj)
 end
 
 function build_character_text(se_obj, include_location_and_target)  
-  local lines = TASK_TEXT_FORMATTER_DEBUG and {"STALKER"} or {}
+  local lines = {}
   local default_color = utils_xml.get_color("pda_white")
 
 
@@ -185,7 +185,7 @@ function build_character_text(se_obj, include_location_and_target)
 end
 
 function build_squad_text(obj, force_single_line, include_location_and_goal)
-  local lines = TASK_TEXT_FORMATTER_DEBUG and {"SQUAD"} or {}
+  local lines = TASK_TEXT_FORMATTER_DEBUG and {"DBG_SQUAD"} or {}
 
   if obj:npc_count() == 0 then
     return lines

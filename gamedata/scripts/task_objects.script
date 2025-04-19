@@ -16,7 +16,23 @@ function get_guider(target_level)
 	return nil
 end
 
+function actor_on_item_take_from_box(box_or_npc, itm) 
+  if box_or_npc and IsInvbox(box_or_npc) then
+    local box_id = box_or_npc:id()
+    local tm = task_manager.get_task_manager()
+    for ti_k,tsk in pairs(tm.task_info) do
+      local history = tsk.history or {}
+      for h_k,h_v in pairs(history) do
+        if h_v.target_id == box_id then
+          h_v.stash_searched = true
+          return;
+        end
+      end
+    end
+  end
+end
 
+RegisterScriptCallback("actor_on_item_take_from_box", actor_on_item_take_from_box)
 
 --[[
 C++ class task {
@@ -172,9 +188,22 @@ function CGeneralTask:generate_descr(descr, target_id)
   end
 
   if self.history then
-    for k, v in pairs(self.history) do
-      lines[#lines + 1] = " "
-      lines[#lines + 1] = v.text
+    for stage, history_item in pairs(self.history) do
+      if history_item.text or task_text_formatter.TASK_TEXT_FORMATTER_DEBUG then
+        lines[#lines + 1] = " "
+      end
+      if history_item.text then
+        lines[#lines + 1] = history_item.text
+      end
+      if task_text_formatter.TASK_TEXT_FORMATTER_DEBUG then
+        local h_target = history_item.target_id and alife_object(history_item.target_id)
+        if h_target then
+          local location = dynamic_news_helper.GetPointDescription(h_target)
+          local section = h_target.section and h_target:section() or "NO_SECTION()"
+          local dbg_text = strformat("Stage: %s | clsid: %s | Section: %s | name: %s | location: %s", stage, h_target:clsid(), section, h_target:name(), location)
+          lines[#lines + 1] = dbg_text
+        end
+      end
     end
   end
 
@@ -192,30 +221,40 @@ function CGeneralTask:next_state()
   end
 
   local t_title = task_functor[self.title_functor](self.id, "title", self.title, self)
-  local title_updated = self.current_title ~= t_title
-
   local t_descr = task_functor[self.descr_functor](self.id, "descr", self.descr, self)
-  local descr_updated = self.current_descr ~= t_descr
-
   local t_target = task_functor[self.target_functor](self.id, "target", self.target, self)
-  local target_updated = self.current_target ~= t_target
 
   local target_obj = t_target and alife_object(t_target)
 
-  -- so in lua_help clsid 151 is wpn_ammo_m209_s which is weird because that's the clsid used for stashes in quests like "drug run" and "search the stash".
-  if target_obj and target_obj:clsid() == 151 then
-    local text = ""
-    local location = dynamic_news_helper.GetPointDescription(target_obj)
-    if task_text_formatter.TASK_TEXT_FORMATTER_DEBUG then
-      local section = target_obj.section and target_obj:section() or "NO_SECTION()"
-      text = strformat("Stage: %s | clsid: %s | Section: %s | name: %s | location: %s", self.stage, target_obj:clsid(), section, target_obj:name(), location)
+  if not self.history[self.stage] then
+    -- so in lua_help clsid 151 is wpn_ammo_m209_s which is weird because that's the clsid used for stashes in quests like "drug run" and "search the stash".
+    local is_stash_task = target_obj and (target_obj:clsid() == 151 or IsInvbox(target_obj))
+    if is_stash_task then
+      self.history[self.stage] = {
+        title = t_title,
+        descr = t_descr,
+        target_id = t_target,
+        is_stash_task = true,
+        stash_searched = false
+      }
     else
-      text = game.translate_string("st_task_time_12") .. " " .. location
+      self.history[self.stage] = {
+        title = t_title,
+        descr_key = t_descr,
+        target_id = t_target,
+      }
     end
-    self.history[self.stage] = {
-      text = text,
-    }
   end
+  
+  local first_stage_history_item = self.history[0] or {}
+  if first_stage_history_item.is_stash_task and not first_stage_history_item.stash_searched then
+    t_title=first_stage_history_item.title
+    t_descr=first_stage_history_item.descr
+    t_target=first_stage_history_item.target_id
+  end
+  local title_updated = self.current_title ~= t_title
+  local descr_updated = self.current_descr ~= t_descr
+  local target_updated = self.current_target ~= t_target
 
   return {
     next_title = t_title,
@@ -370,13 +409,6 @@ function CGeneralTask:check_task(tm)
 			self.last_check_task = t
 		end
 	end
-
-  -- if target_obj and IsItem(target_obj) then
-  --   self.history[self.stage] = {
-  --     target_id=t_target,
-  --     text="Item name: " .. target_obj:name() .. " Location: " .. task_text_formatter.build_location_text(target_obj),
-  --   }
-  -- end
 end
 
 --' Initializing the reward

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+  <string id="ui_mcm_menu_miittp">
+    <text>Дополнительная информация в подсказке к задаче</text>
+  </string>
+
+  <string id="ui_mcm_menu_miittp_indent">
+    <text>Отступ</text>
+  </string>
+
+  <string id="ui_mcm_menu_miittp_debug">
+    <text>Отлаживать</text>
+  </string>
+
+  <string id="ui_mcm_miittp_less_info">
+    <text>Меньше информации/больше погружения</text>
+  </string>
+</string_table>

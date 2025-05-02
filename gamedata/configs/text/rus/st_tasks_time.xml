@@ -48,4 +48,8 @@
   <string id="st_task_time_12">
 		<text>место тайника:</text>
 	</string>
+
+  <string id="st_task_time_13">
+		<text> оличество сталкеров:</text>
+	</string>
 </string_table>

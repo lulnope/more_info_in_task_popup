@@ -1,6 +1,4 @@
-local TASK_TEXT_FORMATTER_DEBUG = false;
-
-function build_text(se_obj, indent_size)
+function build_text(se_obj)
   local lines = {};
 
   if is_human(se_obj) then
@@ -10,22 +8,35 @@ function build_text(se_obj, indent_size)
   elseif IsAnomaly(se_obj) then
     lines = build_location_text(se_obj)
   elseif se_obj:clsid() == clsid.smart_terrain then
-    lines = build_smart_terrain_text(se_obj)
+    if miittp_mcm.LESS_INFO then
+      lines = build_location_text(se_obj)
+    else
+      lines = build_smart_terrain_text(se_obj)
+    end
   elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
-    lines = build_squad_text(se_obj, false, true)
+    if miittp_mcm.LESS_INFO then
+      lines = build_location_text(se_obj)
+    else
+      lines = build_squad_text(se_obj, false, true)
+    end
   else
-    if TASK_TEXT_FORMATTER_DEBUG then
+    if miittp_mcm.DEBUG then
       lines = {"Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n", unpack(build_location_text(se_obj))}
     else
       lines = build_location_text(se_obj)
     end
   end
 
-  local indent = string.rep(" ", indent_size)
+  return lines_to_text(lines)
+end
+
+function lines_to_text(lines)
+  local indent = miittp_mcm.INDENT
   local indent_s = indent .. "%s"
   local format = indent_s .. string.rep(" \\n" .. indent_s, #lines - 1)
   return strformat(format, unpack(lines))
 end
+
 
 function is_human(se_obj) 
   return IsStalker(se_obj) or se_obj:clsid() == clsid.trader or se_obj:clsid() == clsid.script_trader
@@ -44,21 +55,12 @@ function build_smart_terrain_text(smart_terrain)
 
 
   local lines = {}
-  local index = 1
+  local npc_count = 0
   for squad_id, _ in pairs(squad_ids) do
-    if index ~= 1 then
-      -- lines[#lines + 1] = " "
-    end
-
-    if squad_count > 1 then
-      -- lines[#lines + 1] = game.translate_string("st_task_time_11") .. " #" .. index .. ":"
-    end
-
     local squad = alife_object(squad_id)
-    local squad_lines = build_squad_text(squad, true, false)
-    lines = append_table(lines, squad_lines)
-    index = index + 1
+    npc_count = npc_count + (squad and squad:npc_count() or 0)
   end
+  lines[#lines + 1] = game.translate_string("st_task_time_13") .. " " .. npc_count
   
   if #lines > 1 then
     lines[#lines + 1] = " "
@@ -87,6 +89,10 @@ function build_location_text(se_obj, squad)
 end
 
 function build_character_text_single_line(se_obj)
+  if not is_human(se_obj) then
+    return {}
+  end
+
   local infos = {}
   local default_color = utils_xml.get_color("pda_white")
 
@@ -185,7 +191,7 @@ function build_character_text(se_obj, include_location_and_target)
 end
 
 function build_squad_text(obj, force_single_line, include_location_and_goal)
-  local lines = TASK_TEXT_FORMATTER_DEBUG and {"DBG_SQUAD"} or {}
+  local lines = miittp_mcm.DEBUG and {"DBG_SQUAD"} or {}
 
   if obj:npc_count() == 0 then
     return lines

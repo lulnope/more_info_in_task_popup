@@ -163,19 +163,36 @@ function CGeneralTask:generate_descr(descr, target_id)
     descr_text,
   };
 
-  local indent = 3
-
+  
   local target = target_id and alife_object(target_id)
-  local target_text = target and task_text_formatter.build_text(target, indent)
-  if(target_text and target_id ~= self.task_giver_id) then
-    lines[#lines + 1] = " "
-    lines[#lines + 1] = game.translate_string("st_task_time_3")
-    lines[#lines + 1] = target_text
+  if(target and target_id ~= self.task_giver_id) then
+    local target_text = task_text_formatter.build_text(target)
+    if target_text then
+      lines[#lines + 1] = " "
+      lines[#lines + 1] = game.translate_string("st_task_time_3")
+
+      local target_functor = task_functor[self.target_functor]
+      if target_functor == task_functor.assault_task_target_functor and self.stage == 0 and not miittp_mcm.LESS_INFO then
+        local actor = db.actor
+        local var = actor and load_var(actor, self.id)
+        local squad_id = var and var.squad_id
+        local squad = squad_id and alife_object(squad_id)
+        if squad then
+          local squad_lines = task_text_formatter.build_squad_text(squad, true, false)
+          if #squad_lines > 0 then
+            local squad_text = task_text_formatter.lines_to_text(squad_lines)
+            lines[#lines + 1] = squad_text
+          end
+        end
+      end
+
+      lines[#lines + 1] = target_text
+    end
   end
 
 
   local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
-  local task_giver_text = task_giver and task_text_formatter.build_text(task_giver, indent)
+  local task_giver_text = task_giver and task_text_formatter.build_text(task_giver)
   if(task_giver_text) then
     lines[#lines + 1] = " "
     lines[#lines + 1] = game.translate_string("st_task_time_4")
@@ -189,20 +206,21 @@ function CGeneralTask:generate_descr(descr, target_id)
 
   if self.history then
     for stage, history_item in pairs(self.history) do
-      if history_item.text or task_text_formatter.TASK_TEXT_FORMATTER_DEBUG then
+      if history_item.text or miittp_mcm.DEBUG then
         lines[#lines + 1] = " "
       end
       if history_item.text then
         lines[#lines + 1] = history_item.text
       end
-      if task_text_formatter.TASK_TEXT_FORMATTER_DEBUG then
+      if miittp_mcm.DEBUG then
+        local target_id = history_item.target_id or "NO_TARGET_ID" 
         local h_target = history_item.target_id and alife_object(history_item.target_id)
-        if h_target then
-          local location = dynamic_news_helper.GetPointDescription(h_target)
-          local section = h_target.section and h_target:section() or "NO_SECTION()"
-          local dbg_text = strformat("Stage: %s | clsid: %s | Section: %s | name: %s | location: %s", stage, h_target:clsid(), section, h_target:name(), location)
-          lines[#lines + 1] = dbg_text
-        end
+        local location = h_target and dynamic_news_helper.GetPointDescription(h_target) or "NO_TARGET"
+        local section = h_target and h_target.section and h_target:section() or "NO_SECTION"
+        local clsid = h_target and h_target:clsid() or "NO_TARGET"
+        local name = h_target and h_target:name() or "NO_TARGET"
+        local dbg_text = strformat("taskid: %s | target_id: %s | Stage: %s | clsid: %s | Section: %s | name: %s | location: %s", self.id or "NO_ID", target_id, stage, clsid, section, name, location)
+        lines[#lines + 1] = dbg_text
       end
     end
   end
@@ -220,9 +238,13 @@ function CGeneralTask:next_state()
     }
   end
 
-  local t_title = task_functor[self.title_functor](self.id, "title", self.title, self)
-  local t_descr = task_functor[self.descr_functor](self.id, "descr", self.descr, self)
-  local t_target = task_functor[self.target_functor](self.id, "target", self.target, self)
+  local title_functor = task_functor[self.title_functor]
+  local descr_functor = task_functor[self.descr_functor]
+  local target_functor = task_functor[self.target_functor]
+
+  local t_title = title_functor(self.id, "title", self.title, self)
+  local t_descr = descr_functor(self.id, "descr", self.descr, self)
+  local t_target = target_functor(self.id, "target", self.target, self)
 
   local target_obj = t_target and alife_object(t_target)
 
@@ -246,12 +268,15 @@ function CGeneralTask:next_state()
     end
   end
   
+  -- if stash for the task hasn't been searched oveerride target to keep pointing at the stash.
+  -- Helps with multiple scenarios where player has multiple tasks requiring the same item - picking up one item doesn't update all tasks.
   local first_stage_history_item = self.history[0] or {}
   if first_stage_history_item.is_stash_task and not first_stage_history_item.stash_searched then
     t_title=first_stage_history_item.title
     t_descr=first_stage_history_item.descr
     t_target=first_stage_history_item.target_id
   end
+
   local title_updated = self.current_title ~= t_title
   local descr_updated = self.current_descr ~= t_descr
   local target_updated = self.current_target ~= t_target

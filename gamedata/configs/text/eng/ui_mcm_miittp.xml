@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+  <string id="ui_mcm_menu_miittp">
+    <text>More info in task popup</text>
+  </string>
+
+  <string id="ui_mcm_miittp_indent">
+    <text>Indent</text>
+  </string>
+
+  <string id="ui_mcm_miittp_debug">
+    <text>Debug</text>
+  </string>
+
+  <string id="ui_mcm_miittp_less_info">
+    <text>Less info/more immersive</text>
+  </string>
+</string_table>

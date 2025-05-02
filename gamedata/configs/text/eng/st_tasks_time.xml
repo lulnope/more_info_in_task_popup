@@ -48,4 +48,8 @@
   <string id="st_task_time_12">
 		<text>Stash location:</text>
 	</string>
+
+  <string id="st_task_time_13">
+		<text>Stalker count:</text>
+	</string>
 </string_table>

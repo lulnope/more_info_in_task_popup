@@ -47,12 +47,11 @@ C++ class task {
 ]]
 
 class "CGeneralTask"
-function CGeneralTask:__init(id, task_giver_id)
+function CGeneralTask:__init(id)
 	self.loaded = false
 	
 	local task_ini 		= task_manager.task_ini
 	self.id				= id
-  self.task_giver_id = task_giver_id
 	self.stage			= 0
 
 	self.title			= task_ini:r_string_ex(id,"title") or "TITLE_DOESNT_EXIST"
@@ -158,7 +157,11 @@ function CGeneralTask:generate_descr(descr, target_id)
   local timeElapsed = self:get_time_elapsed()
   local descr_text = (descr and game.translate_string(descr)) or game.translate_string("st_task_time_10")
 
-  local lines = {
+  local lines = miittp_mcm.DEBUG and {
+    "TASK_ID: " .. (self.id or "NO_ID"),
+    game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string("st_task_time_2"),
+    descr_text,
+  } or {
     game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string("st_task_time_2"),
     descr_text,
   };
@@ -166,7 +169,7 @@ function CGeneralTask:generate_descr(descr, target_id)
   
   local target = target_id and alife_object(target_id)
   if(target and target_id ~= self.task_giver_id) then
-    local target_text = task_text_formatter.build_text(target)
+    local target_text = miittp_task_text_formatter.build_text(target)
     if target_text then
       lines[#lines + 1] = " "
       lines[#lines + 1] = game.translate_string("st_task_time_3")
@@ -178,9 +181,13 @@ function CGeneralTask:generate_descr(descr, target_id)
         local squad_id = var and var.squad_id
         local squad = squad_id and alife_object(squad_id)
         if squad then
-          local squad_lines = task_text_formatter.build_squad_text(squad, true, false)
+          local squad_lines = miittp_task_text_formatter.build_squad_text(squad, true, {
+            rank=true,
+            reputation=miittp_mcm.SHOW_TARGET_REPUTATION,
+            location_and_goal=false
+          })
           if #squad_lines > 0 then
-            local squad_text = task_text_formatter.lines_to_text(squad_lines)
+            local squad_text = miittp_task_text_formatter.lines_to_text(squad_lines)
             lines[#lines + 1] = squad_text
           end
         end
@@ -192,7 +199,12 @@ function CGeneralTask:generate_descr(descr, target_id)
 
 
   local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
-  local task_giver_text = task_giver and task_text_formatter.build_text(task_giver)
+  local task_giver_lines = task_giver and miittp_task_text_formatter.build_character_text(task_giver, {
+    rank=miittp_mcm.SHOW_TASK_GIVER_RANK,
+    reputation=miittp_mcm.SHOW_TASK_GIVER_REPUTATION,
+    location_and_goal=true
+  })
+  local task_giver_text = task_giver_lines and #task_giver_lines > 0 and miittp_task_text_formatter.lines_to_text(task_giver_lines)
   if(task_giver_text) then
     lines[#lines + 1] = " "
     lines[#lines + 1] = game.translate_string("st_task_time_4")
@@ -219,7 +231,7 @@ function CGeneralTask:generate_descr(descr, target_id)
         local section = h_target and h_target.section and h_target:section() or "NO_SECTION"
         local clsid = h_target and h_target:clsid() or "NO_TARGET"
         local name = h_target and h_target:name() or "NO_TARGET"
-        local dbg_text = strformat("taskid: %s | target_id: %s | Stage: %s | clsid: %s | Section: %s | name: %s | location: %s", self.id or "NO_ID", target_id, stage, clsid, section, name, location)
+        local dbg_text = strformat("Stage: %s | target_id: %s | clsid: %s | Section: %s | name: %s | location: %s", stage, target_id, clsid, section, name, location)
         lines[#lines + 1] = dbg_text
       end
     end

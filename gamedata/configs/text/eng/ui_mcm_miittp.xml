@@ -16,4 +16,16 @@
   <string id="ui_mcm_miittp_less_info">
     <text>Less info/more immersive</text>
   </string>
+
+  <string id="ui_mcm_miittp_show_target_reputation">
+    <text>Show target reputation (relevant only if less info = false)</text>
+  </string>
+
+  <string id="ui_mcm_miittp_show_task_giver_reputation">
+    <text>Show task giver reputation</text>
+  </string>
+
+  <string id="ui_mcm_miittp_show_task_giver_rank">
+    <text>Show task giver rank</text>
+  </string>
 </string_table>

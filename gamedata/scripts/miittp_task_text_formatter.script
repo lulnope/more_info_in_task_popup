@@ -2,7 +2,11 @@ function build_text(se_obj)
   local lines = {};
 
   if is_human(se_obj) then
-    lines = build_character_text(se_obj, true)
+    lines = build_character_text(se_obj, {
+      rank=true,
+      reputation=miittp_mcm.SHOW_TARGET_REPUTATION,
+      location_and_goal=true
+    })
   elseif IsMonster(se_obj) then
     lines = build_location_text(se_obj)
   elseif IsAnomaly(se_obj) then
@@ -17,11 +21,15 @@ function build_text(se_obj)
     if miittp_mcm.LESS_INFO then
       lines = build_location_text(se_obj)
     else
-      lines = build_squad_text(se_obj, false, true)
+      lines = build_squad_text(se_obj, false, {
+        rank=true,
+        reputation=miittp_mcm.SHOW_TARGET_REPUTATION,
+        location_and_goal=true
+      })
     end
   else
     if miittp_mcm.DEBUG then
-      lines = {"Unknown clsid: " .. se_obj:clsid() .. " implement description building in task_text_formatter.script::build_text\\n\\n", unpack(build_location_text(se_obj))}
+      lines = {"Unknown clsid: " .. se_obj:clsid() .. " implement description building in miittp_task_text_formatter.script::build_text\\n\\n", unpack(build_location_text(se_obj))}
     else
       lines = build_location_text(se_obj)
     end
@@ -47,7 +55,7 @@ function build_smart_terrain_text(smart_terrain)
   local squad_count = 0
   for npc_id, _ in pairs(smart_terrain.npc_info) do
     local npc = alife_object(npc_id)
-    if is_human(npc) and npc.group_id and npc.group_id ~= 65535 then
+    if npc and is_human(npc) and npc.group_id and npc.group_id ~= 65535 then
       squad_ids[npc.group_id] = true
       squad_count = squad_count + 1
     end
@@ -88,7 +96,7 @@ function build_location_text(se_obj, squad)
   end
 end
 
-function build_character_text_single_line(se_obj)
+function build_character_text_single_line(se_obj, options)
   if not is_human(se_obj) then
     return {}
   end
@@ -118,13 +126,13 @@ function build_character_text_single_line(se_obj)
 
 
   local rank = se_obj.rank and se_obj:rank()
-  if rank then
+  if options and options.rank and rank then
     local rank_str = "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
     infos[#infos + 1] = rank_str
   end
 
 	local reputation = se_obj.reputation and se_obj:reputation()
-  if reputation then
+  if options and options.reputation and reputation then
     local repu_color = "%c[255,255,255,1]"
     if (reputation <= -500) then
       repu_color = "%c[255,255,1,1]"
@@ -139,7 +147,7 @@ function build_character_text_single_line(se_obj)
   return { strformat(format, unpack(infos)) }
 end
 
-function build_character_text(se_obj, include_location_and_target)  
+function build_character_text(se_obj, options)
   local lines = {}
   local default_color = utils_xml.get_color("pda_white")
 
@@ -165,13 +173,13 @@ function build_character_text(se_obj, include_location_and_target)
 
 
   local rank = se_obj.rank and se_obj:rank()
-  if rank then
+  if options and options.rank and rank then
     local rank_str = default_color .. game.translate_string("ui_st_rank") .. ": " .. "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
     lines[#lines + 1] = rank_str
   end
 
 	local reputation = se_obj.reputation and se_obj:reputation()
-  if reputation then
+  if options and options.reputation and reputation then
     local repu_color = "%c[255,255,255,1]"
     if (reputation <= -500) then
       repu_color = "%c[255,255,1,1]"
@@ -181,7 +189,7 @@ function build_character_text(se_obj, include_location_and_target)
     local repu_str = default_color .. game.translate_string("ui_st_reputation") .. ": " .. repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
     lines[#lines + 1] = repu_str
   end
-	if include_location_and_target then	
+	if options and options.location_and_goal then	
     local squad = se_obj.group_id and se_obj.group_id ~= 65535 and alife_object(se_obj.group_id)
 		local location_lines = build_location_text(se_obj, squad)
     lines = append_table(lines, location_lines)
@@ -190,7 +198,7 @@ function build_character_text(se_obj, include_location_and_target)
   return lines
 end
 
-function build_squad_text(obj, force_single_line, include_location_and_goal)
+function build_squad_text(obj, force_single_line, options)
   local lines = miittp_mcm.DEBUG and {"DBG_SQUAD"} or {}
 
   if obj:npc_count() == 0 then
@@ -204,21 +212,21 @@ function build_squad_text(obj, force_single_line, include_location_and_goal)
       squad_members[#squad_members + 1] = se_obj
 		end
   end
-  
+
   if obj:npc_count() == 1 and (not force_single_line) then
-    return build_character_text(squad_members[1], true)
-  end
-	
-  for _,se_obj in pairs(squad_members) do
-    lines = append_table(lines, build_character_text_single_line(se_obj))
+    return build_character_text(squad_members[1], options)
   end
 
-  if include_location_and_goal then
+  for _,se_obj in pairs(squad_members) do
+    lines = append_table(lines, build_character_text_single_line(se_obj, options))
+  end
+
+  if options and options.location_and_goal then
     local location_lines = build_location_text(obj, obj)
     lines = append_table(lines, location_lines)
   end
-	
-	return lines	
+
+	return lines
 end
 
 function append_table(dest, src)

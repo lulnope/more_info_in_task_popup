@@ -16,4 +16,16 @@
   <string id="ui_mcm_miittp_less_info">
     <text>Меньше информации/больше погружения</text>
   </string>
+
+  <string id="ui_mcm_miittp_show_target_reputation">
+    <text>Показать целевую репутацию (актуально только если меньше информации = false)</text>
+  </string>
+
+  <string id="ui_mcm_miittp_show_task_giver_reputation">
+    <text>Показать репутацию дающего задание</text>
+  </string>
+
+  <string id="ui_mcm_miittp_show_task_giver_rank">
+    <text>Показать ранг дающего задание</text>
+  </string>
 </string_table>

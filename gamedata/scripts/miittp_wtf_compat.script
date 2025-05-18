@@ -1,0 +1,23 @@
+-- if igi_description then
+--   local original = igi_description.get_description
+--   igi_description.get_description = function(CACHE)
+--     local description = original(CACHE)
+
+--     local task_giver = CACHE.task_giver_id and alife_object(CACHE.task_giver_id)
+--     local task_giver_lines = task_giver and miittp_task_text_formatter.build_character_text(task_giver, {
+--       rank=miittp_mcm.SHOW_TASK_GIVER_RANK,
+--       reputation=miittp_mcm.SHOW_TASK_GIVER_REPUTATION,
+--       location_and_goal=true
+--     })
+--     local task_giver_text = task_giver_lines and #task_giver_lines > 0 and miittp_task_text_formatter.lines_to_text(task_giver_lines)
+--     if(task_giver_text) then
+--       local lines = {}
+--       lines[#lines + 1] = " "
+--       lines[#lines + 1] = game.translate_string("st_task_time_4")
+--       lines[#lines + 1] = task_giver_text
+--       scription = description .. "\\n" .. miittp_task_text_formatter.lines_to_text(lines)
+--     end
+
+--     return description;
+--   end
+-- end

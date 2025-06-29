@@ -4,32 +4,32 @@
 --' Descriptor for an ordinary job
 --'*************************************************************************************
 local guiders_by_level = {
-							["zaton"]={["jupiter"]="zat_b215_stalker_guide_zaton", ["pripyat"]="zat_b215_stalker_guide_zaton"},
-							["jupiter"]={["zaton"]="zat_b215_stalker_guide_jupiter", ["pripyat"]="jup_b43_stalker_assistant"},
-							["pripyat"]={["zaton"]="jup_b43_stalker_assistant_pri", ["jupiter"]="jup_b43_stalker_assistant_pri"},
-						 }
+	["zaton"] = { ["jupiter"] = "zat_b215_stalker_guide_zaton", ["pripyat"] = "zat_b215_stalker_guide_zaton" },
+	["jupiter"] = { ["zaton"] = "zat_b215_stalker_guide_jupiter", ["pripyat"] = "jup_b43_stalker_assistant" },
+	["pripyat"] = { ["zaton"] = "jup_b43_stalker_assistant_pri", ["jupiter"] = "jup_b43_stalker_assistant_pri" },
+}
 function get_guider(target_level)
 	local ln = level.name()
-	if(guiders_by_level[ln] and guiders_by_level[ln][target_level]) then
+	if guiders_by_level[ln] and guiders_by_level[ln][target_level] then
 		return get_story_object_id(guiders_by_level[ln][target_level])
 	end
 	return nil
 end
 
-function actor_on_item_take_from_box(box_or_npc, itm) 
-  if box_or_npc and IsInvbox(box_or_npc) then
-    local box_id = box_or_npc:id()
-    local tm = task_manager.get_task_manager()
-    for ti_k,tsk in pairs(tm.task_info) do
-      local history = tsk.history or {}
-      for h_k,h_v in pairs(history) do
-        if h_v.target_id == box_id then
-          h_v.stash_searched = true
-          return;
-        end
-      end
-    end
-  end
+function actor_on_item_take_from_box(box_or_npc, itm)
+	if box_or_npc and IsInvbox(box_or_npc) then
+		local box_id = box_or_npc:id()
+		local tm = task_manager.get_task_manager()
+		for ti_k, tsk in pairs(tm.task_info) do
+			local history = tsk.history or {}
+			for h_k, h_v in pairs(history) do
+				if h_v.target_id == box_id then
+					h_v.stash_searched = true
+					return
+				end
+			end
+		end
+	end
 end
 
 RegisterScriptCallback("actor_on_item_take_from_box", actor_on_item_take_from_box)
@@ -46,69 +46,69 @@ C++ class task {
 };
 ]]
 
-class "CGeneralTask"
+class("CGeneralTask")
 function CGeneralTask:__init(id)
 	self.loaded = false
-	
-	local task_ini 		= task_manager.task_ini
-	self.id				= id
-	self.stage			= 0
 
-	self.title			= task_ini:r_string_ex(id,"title") or "TITLE_DOESNT_EXIST"
-	self.title_functor	= task_ini:r_string_ex(id,"title_functor") or "condlist"
-	self.current_title 	= nil
+	local task_ini = task_manager.task_ini
+	self.id = id
+	self.stage = 0
 
-	self.descr			= task_ini:r_string_ex(id,"descr") or "DESCR_DOESNT_EXIST"
-	self.descr_functor	= task_ini:r_string_ex(id,"descr_functor") or "condlist"
-	self.current_descr 	= nil
+	self.title = task_ini:r_string_ex(id, "title") or "TITLE_DOESNT_EXIST"
+	self.title_functor = task_ini:r_string_ex(id, "title_functor") or "condlist"
+	self.current_title = nil
 
-	self.target			= task_ini:r_string_ex(id,"target")
-	self.target_functor	= task_ini:r_string_ex(id,"target_functor") or "target_condlist"
-	self.status_functor = task_ini:r_string_ex(id,"status_functor")
+	self.descr = task_ini:r_string_ex(id, "descr") or "DESCR_DOESNT_EXIST"
+	self.descr_functor = task_ini:r_string_ex(id, "descr_functor") or "condlist"
+	self.current_descr = nil
+
+	self.target = task_ini:r_string_ex(id, "target")
+	self.target_functor = task_ini:r_string_ex(id, "target_functor") or "target_condlist"
+	self.status_functor = task_ini:r_string_ex(id, "status_functor")
 	self.current_target = nil
 
-	self.icon			= task_ini:r_string_ex(id,"icon") or "ui_pda2_mtask_overlay"
-	self.prior			= task_ini:r_float_ex(id,"prior") or 0
-	self.storyline		= task_ini:r_bool_ex(id,"storyline",false)
+	self.icon = task_ini:r_string_ex(id, "icon") or "ui_pda2_mtask_overlay"
+	self.prior = task_ini:r_float_ex(id, "prior") or 0
+	self.storyline = task_ini:r_bool_ex(id, "storyline", false)
 
-	self.repeat_timeout	= task_ini:r_float_ex(id,"repeat_timeout")
+	self.repeat_timeout = task_ini:r_float_ex(id, "repeat_timeout")
 	self.timeout = nil
-  self.history = {}
-	
+	self.history = {}
+
 	--' Terms of execution and failure of the quest
 	local i = 0
 	self.condlist = {}
-	while task_ini:line_exist(id, "condlist_"..i) do
-		local clst = task_ini:r_string_to_condlist(id,"condlist_"..i)
-		if (clst) then
-			table.insert(self.condlist,clst)
+	while task_ini:line_exist(id, "condlist_" .. i) do
+		local clst = task_ini:r_string_to_condlist(id, "condlist_" .. i)
+		if clst then
+			table.insert(self.condlist, clst)
 		end
 		i = i + 1
 	end
 
 	--' Condelists on the status quests
-	self.on_init = task_ini:r_string_to_condlist(id,"on_init")
-	self.on_complete = task_ini:r_string_to_condlist(id,"on_complete")
-	self.on_fail = task_ini:r_string_to_condlist(id,"on_fail")
-	self.on_reversed = task_ini:r_string_to_condlist(id,"on_reversed")
-	self.on_cancel = task_ini:r_string_to_condlist(id,"on_cancel")
-	
+	self.on_init = task_ini:r_string_to_condlist(id, "on_init")
+	self.on_complete = task_ini:r_string_to_condlist(id, "on_complete")
+	self.on_fail = task_ini:r_string_to_condlist(id, "on_fail")
+	self.on_reversed = task_ini:r_string_to_condlist(id, "on_reversed")
+	self.on_cancel = task_ini:r_string_to_condlist(id, "on_cancel")
+
 	--' Quest Rewards
 	-- IMPORTANT ONLY USE THESE WHEN YOU COMPLETE TASK WHILE IN DIALOG!!!
-	self.reward_money = task_ini:r_string_to_condlist(id,"reward_money")
-	self.reward_item = task_ini:r_string_to_condlist(id,"reward_money")
+	self.reward_money = task_ini:r_string_to_condlist(id, "reward_money")
+	self.reward_item = task_ini:r_string_to_condlist(id, "reward_money")
 
 	--' ������ ������, ����� ����: "normal", "selected", "completed", "fail", "reversed"
 	self.status = "normal"
 
-	self.current_title = db.actor and task_functor[self.title_functor](self.id, "title", self.title,self)
-	self.current_descr = db.actor and task_functor[self.descr_functor](self.id, "descr", self.descr,self)
+	self.current_title = db.actor and task_functor[self.title_functor](self.id, "title", self.title, self)
+	self.current_descr = db.actor and task_functor[self.descr_functor](self.id, "descr", self.descr, self)
 
 	local time = 0
 	if self.wait_time ~= nil then
-		time = self.wait_time  -- Here the time is specified in game seconds
+		time = self.wait_time -- Here the time is specified in game seconds
 	end
-	if(self.storyline) then
+	if self.storyline then
 		if time == 0 then
 			self.spot = "storyline_task_location"
 		else
@@ -117,7 +117,7 @@ function CGeneralTask:__init(id)
 		local ttl = self.current_title and game.translate_string(self.current_title)
 		if ttl then
 			local msg = game.translate_string("general_new_task") .. " " .. ttl
-			actor_menu.set_fade_msg( msg, 5, nil, "interface\\horror_notify_02" ) -- Fading text
+			actor_menu.set_fade_msg(msg, 5, nil, "interface\\horror_notify_02") -- Fading text
 		end
 	else
 		if time == 0 then
@@ -126,191 +126,215 @@ function CGeneralTask:__init(id)
 			self.spot = "secondary_task_location_complex_timer"
 		end
 	end
-	
-	if (self.target_functor == nil or task_functor[self.target_functor] == nil) then 
-		printf("task_id=%s | target_functor not set properly, it's either missing or misnamed, check tm_*.ltx and task_functor.script",id)
-	end 
-	
-	self.current_target = db.actor and self.target_functor and task_functor[self.target_functor](self.id, "target", self.target,self)
-	self.dont_send_update_news = task_ini:r_bool_ex(id,"dont_send_update_news",false)
+
+	if self.target_functor == nil or task_functor[self.target_functor] == nil then
+		printf(
+			"task_id=%s | target_functor not set properly, it's either missing or misnamed, check tm_*.ltx and task_functor.script",
+			id
+		)
+	end
+
+	self.current_target = db.actor
+		and self.target_functor
+		and task_functor[self.target_functor](self.id, "target", self.target, self)
+	self.dont_send_update_news = task_ini:r_bool_ex(id, "dont_send_update_news", false)
 end
 
 function CGeneralTask:get_time_elapsed()
-  local secondsElapsed = game.get_game_time():diffSec(self.inited_time)
-  local minutesElapsed = math.floor(secondsElapsed / 60)
-  local hoursElapsed = math.floor(minutesElapsed / 60)
-  local daysElapsed = math.floor(hoursElapsed / 24)
+	local secondsElapsed = game.get_game_time():diffSec(self.inited_time)
+	local minutesElapsed = math.floor(secondsElapsed / 60)
+	local hoursElapsed = math.floor(minutesElapsed / 60)
+	local daysElapsed = math.floor(hoursElapsed / 24)
 
-  if daysElapsed > 0 then
-    return daysElapsed .. (" ") .. game.translate_string("st_task_time_6")
-  elseif hoursElapsed > 0 then
-    return hoursElapsed .. (" ") .. game.translate_string("st_task_time_7")
-  elseif minutesElapsed > 0 then
-    return minutesElapsed .. (" ") .. game.translate_string("st_task_time_8")
-  else
-    return math.floor(secondsElapsed) .. (" ") .. game.translate_string("st_task_time_9")
-  end
+	if daysElapsed > 0 then
+		return daysElapsed .. " " .. game.translate_string("st_task_time_6")
+	elseif hoursElapsed > 0 then
+		return hoursElapsed .. " " .. game.translate_string("st_task_time_7")
+	elseif minutesElapsed > 0 then
+		return minutesElapsed .. " " .. game.translate_string("st_task_time_8")
+	else
+		return math.floor(secondsElapsed) .. " " .. game.translate_string("st_task_time_9")
+	end
 end
 
 function CGeneralTask:generate_descr(descr, target_id)
-  -- utils_data.debug_write(strformat("CGeneralTask:generate_descr %s %s %s",self.id, descr, target_id or "NO_TARGET"))
-  local timeElapsed = self:get_time_elapsed()
-  local descr_text = (descr and game.translate_string(descr)) or game.translate_string("st_task_time_10")
+	-- utils_data.debug_write(strformat("CGeneralTask:generate_descr %s %s %s",self.id, descr, target_id or "NO_TARGET"))
+	local timeElapsed = self:get_time_elapsed()
+	local descr_text = (descr and game.translate_string(descr)) or game.translate_string("st_task_time_10")
 
-  local lines = miittp_mcm.DEBUG and {
-    "TASK_ID: " .. (self.id or "NO_ID"),
-    game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string("st_task_time_2"),
-    descr_text,
-  } or {
-    game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string("st_task_time_2"),
-    descr_text,
-  };
+	local lines = miittp_mcm.DEBUG
+			and {
+				"TASK_ID: " .. (self.id or "NO_ID"),
+				game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string(
+					"st_task_time_2"
+				),
+				descr_text,
+			}
+		or {
+			game.translate_string("st_task_time_1") .. " " .. timeElapsed .. " " .. game.translate_string(
+				"st_task_time_2"
+			),
+			descr_text,
+		}
 
-  
-  local target = target_id and alife_object(target_id)
-  if(target and target_id ~= self.task_giver_id) then
-    local target_text = miittp_task_text_formatter.build_text(target)
-    if target_text then
-      lines[#lines + 1] = " "
-      lines[#lines + 1] = game.translate_string("st_task_time_3")
+	local target = target_id and alife_object(target_id)
+	if target and target_id ~= self.task_giver_id then
+		local target_text = miittp_task_text_formatter.build_text(target)
+		if target_text then
+			lines[#lines + 1] = " "
+			lines[#lines + 1] = game.translate_string("st_task_time_3")
 
-      local target_functor = task_functor[self.target_functor]
-      if target_functor == task_functor.assault_task_target_functor and self.stage == 0 and not miittp_mcm.LESS_INFO then
-        local actor = db.actor
-        local var = actor and load_var(actor, self.id)
-        local squad_id = var and var.squad_id
-        local squad = squad_id and alife_object(squad_id)
-        if squad then
-          local squad_lines = miittp_task_text_formatter.build_squad_text(squad, true, {
-            rank=true,
-            reputation=miittp_mcm.SHOW_TARGET_REPUTATION,
-            location_and_goal=false
-          })
-          if #squad_lines > 0 then
-            local squad_text = miittp_task_text_formatter.lines_to_text(squad_lines)
-            lines[#lines + 1] = squad_text
-          end
-        end
-      end
+			local target_functor = task_functor[self.target_functor]
+			if
+				target_functor == task_functor.assault_task_target_functor
+				and self.stage == 0
+				and not miittp_mcm.LESS_INFO
+			then
+				local actor = db.actor
+				local var = actor and load_var(actor, self.id)
+				local squad_id = var and var.squad_id
+				local squad = squad_id and alife_object(squad_id)
+				if squad then
+					local squad_lines = miittp_task_text_formatter.build_squad_text(squad, true, {
+						rank = true,
+						reputation = miittp_mcm.SHOW_TARGET_REPUTATION,
+						location_and_goal = false,
+					})
+					if #squad_lines > 0 then
+						local squad_text = miittp_task_text_formatter.lines_to_text(squad_lines)
+						lines[#lines + 1] = squad_text
+					end
+				end
+			end
 
-      lines[#lines + 1] = target_text
-    end
-  end
+			lines[#lines + 1] = target_text
+		end
+	end
 
+	local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
+	local task_giver_lines = task_giver
+		and miittp_task_text_formatter.build_character_text(task_giver, {
+			rank = miittp_mcm.SHOW_TASK_GIVER_RANK,
+			reputation = miittp_mcm.SHOW_TASK_GIVER_REPUTATION,
+			location_and_goal = true,
+		})
+	local task_giver_text = task_giver_lines
+		and #task_giver_lines > 0
+		and miittp_task_text_formatter.lines_to_text(task_giver_lines)
+	if task_giver_text then
+		lines[#lines + 1] = " "
+		lines[#lines + 1] = game.translate_string("st_task_time_4")
+		lines[#lines + 1] = task_giver_text
+	end
 
-  local task_giver = self.task_giver_id and alife_object(self.task_giver_id)
-  local task_giver_lines = task_giver and miittp_task_text_formatter.build_character_text(task_giver, {
-    rank=miittp_mcm.SHOW_TASK_GIVER_RANK,
-    reputation=miittp_mcm.SHOW_TASK_GIVER_REPUTATION,
-    location_and_goal=true
-  })
-  local task_giver_text = task_giver_lines and #task_giver_lines > 0 and miittp_task_text_formatter.lines_to_text(task_giver_lines)
-  if(task_giver_text) then
-    lines[#lines + 1] = " "
-    lines[#lines + 1] = game.translate_string("st_task_time_4")
-    lines[#lines + 1] = task_giver_text
-  end
+	if target_id == self.task_giver_id and target_id ~= nil then
+		lines[#lines + 1] = " "
+		lines[#lines + 1] = game.translate_string("st_task_time_5")
+	end
 
-  if target_id == self.task_giver_id and target_id ~= nil then
-    lines[#lines + 1] = " "
-    lines[#lines + 1] = game.translate_string("st_task_time_5")
-  end
+	if self.history then
+		for stage, history_item in pairs(self.history) do
+			if history_item.text or miittp_mcm.DEBUG then
+				lines[#lines + 1] = " "
+			end
+			if history_item.text then
+				lines[#lines + 1] = history_item.text
+			end
+			if miittp_mcm.DEBUG then
+				local target_id = history_item.target_id or "NO_TARGET_ID"
+				local h_target = history_item.target_id and alife_object(history_item.target_id)
+				local location = h_target and dynamic_news_helper.GetPointDescription(h_target) or "NO_TARGET"
+				local section = h_target and h_target.section and h_target:section() or "NO_SECTION"
+				local clsid = h_target and h_target:clsid() or "NO_TARGET"
+				local name = h_target and h_target:name() or "NO_TARGET"
+				local dbg_text = strformat(
+					"Stage: %s | target_id: %s | clsid: %s | Section: %s | name: %s | location: %s",
+					stage,
+					target_id,
+					clsid,
+					section,
+					name,
+					location
+				)
+				lines[#lines + 1] = dbg_text
+			end
+		end
+	end
 
-  if self.history then
-    for stage, history_item in pairs(self.history) do
-      if history_item.text or miittp_mcm.DEBUG then
-        lines[#lines + 1] = " "
-      end
-      if history_item.text then
-        lines[#lines + 1] = history_item.text
-      end
-      if miittp_mcm.DEBUG then
-        local target_id = history_item.target_id or "NO_TARGET_ID" 
-        local h_target = history_item.target_id and alife_object(history_item.target_id)
-        local location = h_target and dynamic_news_helper.GetPointDescription(h_target) or "NO_TARGET"
-        local section = h_target and h_target.section and h_target:section() or "NO_SECTION"
-        local clsid = h_target and h_target:clsid() or "NO_TARGET"
-        local name = h_target and h_target:name() or "NO_TARGET"
-        local dbg_text = strformat("Stage: %s | target_id: %s | clsid: %s | Section: %s | name: %s | location: %s", stage, target_id, clsid, section, name, location)
-        lines[#lines + 1] = dbg_text
-      end
-    end
-  end
-
-  local format = "%s" .. string.rep(" \\n%s", #lines - 1)
-  return strformat(format, unpack(lines))
+	local format = "%s" .. string.rep(" \\n%s", #lines - 1)
+	return strformat(format, unpack(lines))
 end
 
 function CGeneralTask:next_state()
-  if not db.actor then
-    return {
-      title_updated = false,
-      descr_updated = false,
-      target_updated = false
-    }
-  end
+	if not db.actor then
+		return {
+			title_updated = false,
+			descr_updated = false,
+			target_updated = false,
+		}
+	end
 
-  local title_functor = task_functor[self.title_functor]
-  local descr_functor = task_functor[self.descr_functor]
-  local target_functor = task_functor[self.target_functor]
+	local title_functor = task_functor[self.title_functor]
+	local descr_functor = task_functor[self.descr_functor]
+	local target_functor = task_functor[self.target_functor]
 
-  local t_title = title_functor(self.id, "title", self.title, self)
-  local t_descr = descr_functor(self.id, "descr", self.descr, self)
-  local t_target = target_functor(self.id, "target", self.target, self)
+	local t_title = title_functor(self.id, "title", self.title, self)
+	local t_descr = descr_functor(self.id, "descr", self.descr, self)
+	local t_target = target_functor(self.id, "target", self.target, self)
 
-  local target_obj = t_target and alife_object(t_target)
+	local target_obj = t_target and alife_object(t_target)
 
-  if not self.history[self.stage] then
-    -- so in lua_help clsid 151 is wpn_ammo_m209_s which is weird because that's the clsid used for stashes in quests like "drug run" and "search the stash".
-    local is_stash_task = target_obj and (target_obj:clsid() == 151 or IsInvbox(target_obj))
-    if is_stash_task then
-      self.history[self.stage] = {
-        title = t_title,
-        descr = t_descr,
-        target_id = t_target,
-        is_stash_task = true,
-        stash_searched = false
-      }
-    else
-      self.history[self.stage] = {
-        title = t_title,
-        descr_key = t_descr,
-        target_id = t_target,
-      }
-    end
-  end
-  
-  -- if stash for the task hasn't been searched oveerride target to keep pointing at the stash.
-  -- Helps with multiple scenarios where player has multiple tasks requiring the same item - picking up one item doesn't update all tasks.
-  local first_stage_history_item = self.history[0] or {}
-  if first_stage_history_item.is_stash_task and not first_stage_history_item.stash_searched then
-    t_title=first_stage_history_item.title
-    t_descr=first_stage_history_item.descr
-    t_target=first_stage_history_item.target_id
-  end
+	if not self.history[self.stage] then
+		-- so in lua_help clsid 151 is wpn_ammo_m209_s which is weird because that's the clsid used for stashes in quests like "drug run" and "search the stash".
+		local is_stash_task = target_obj and (target_obj:clsid() == 151 or IsInvbox(target_obj))
+		if is_stash_task then
+			self.history[self.stage] = {
+				title = t_title,
+				descr = t_descr,
+				target_id = t_target,
+				is_stash_task = true,
+				stash_searched = false,
+			}
+		else
+			self.history[self.stage] = {
+				title = t_title,
+				descr_key = t_descr,
+				target_id = t_target,
+			}
+		end
+	end
 
-  local title_updated = self.current_title ~= t_title
-  local descr_updated = self.current_descr ~= t_descr
-  local target_updated = self.current_target ~= t_target
+	-- if stash for the task hasn't been searched oveerride target to keep pointing at the stash.
+	-- Helps with multiple scenarios where player has multiple tasks requiring the same item - picking up one item doesn't update all tasks.
+	local first_stage_history_item = self.history[0] or {}
+	if first_stage_history_item.is_stash_task and not first_stage_history_item.stash_searched then
+		t_title = first_stage_history_item.title
+		t_descr = first_stage_history_item.descr
+		t_target = first_stage_history_item.target_id
+	end
 
-  return {
-    next_title = t_title,
-    title_updated = title_updated,
+	local title_updated = self.current_title ~= t_title
+	local descr_updated = self.current_descr ~= t_descr
+	local target_updated = self.current_target ~= t_target
 
-    next_descr = t_descr,
-    descr_updated = descr_updated,
-    descr_full_text = self:generate_descr(t_descr, t_target),
+	return {
+		next_title = t_title,
+		title_updated = title_updated,
 
-    next_target = t_target,
-    target_updated = target_updated,
+		next_descr = t_descr,
+		descr_updated = descr_updated,
+		descr_full_text = self:generate_descr(t_descr, t_target),
 
-    updated = title_updated or descr_updated or target_updated
-  }
+		next_target = t_target,
+		target_updated = target_updated,
+
+		updated = title_updated or descr_updated or target_updated,
+	}
 end
 
 function CGeneralTask:get_title()
 	return self.title or ""
-end 
+end
 
 function CGeneralTask:get_icon_name()
 	return self.icon
@@ -318,10 +342,10 @@ end
 
 --' Issue of quest
 function CGeneralTask:give_task()
-  utils_data.debug_write(strformat("CGeneralTask:give_task %s %s ",self.id, self.task_giver_id or "NO_TASK_GIVER"))
+	utils_data.debug_write(strformat("CGeneralTask:give_task %s %s ", self.id, self.task_giver_id or "NO_TASK_GIVER"))
 	local t = db.actor and db.actor:get_task(self.id, true) or CGameTask()
 	t:set_id(tostring(self.id))
-	if(self.storyline) then
+	if self.storyline then
 		t:set_type(task.storyline)
 	else
 		t:set_type(task.additional)
@@ -333,15 +357,15 @@ function CGeneralTask:give_task()
 	t:add_complete_func("task_manager.task_complete")
 	t:add_fail_func("task_manager.task_fail")
 
-	if (self.on_init) then
+	if self.on_init then
 		xr_logic.pick_section_from_condlist(db.actor, db.actor, self.on_init)
-	end 
-	
+	end
+
 	if self.current_target ~= nil then
 		t:set_map_location(self.spot)
 		t:set_map_object_id(self.current_target)
 
-		if(self.storyline) then
+		if self.storyline then
 			level.map_add_object_spot(self.current_target, "ui_storyline_task_blink", "")
 		else
 			level.map_add_object_spot(self.current_target, "ui_secondary_task_blink", "")
@@ -349,47 +373,47 @@ function CGeneralTask:give_task()
 	end
 	local time = 0
 	if self.wait_time ~= nil then
-		time = self.wait_time  -- Here the time is specified in game seconds
+		time = self.wait_time -- Here the time is specified in game seconds
 	end
 	--' ������� � task_info
 	self.status = "selected"
 	self.inited_time = game.get_game_time()
 
-	db.actor:give_task(t, time*10, false, time)
+	db.actor:give_task(t, time * 10, false, time)
 	self.t = t
 	self.stage = 0
 	self.forced_status = nil
 
-  local d = self:generate_descr(self.current_descr, self.current_target)
-  t:set_description(d)
+	local d = self:generate_descr(self.current_descr, self.current_target)
+	t:set_description(d)
 end
 --' Checking the current execution of the quest
 function CGeneralTask:check_task(tm)
 	local tg = time_global()
 
-  -- printf("CHECK TASK RUNNING 1")
-	
-	if (self.check_time and self.last_check_task == nil and tg < self.check_time) then
-		return
-	end
-	
-	if (not db.actor) then
-		return
-	end
-	
-	self.t = self.t or db.actor and db.actor:get_task(self.id,true)
-	
-	if (self.t == nil) then -- task is most likely in timeout
+	-- printf("CHECK TASK RUNNING 1")
+
+	if self.check_time and self.last_check_task == nil and tg < self.check_time then
 		return
 	end
 
-  -- printf("CHECK TASK RUNNING 2")
+	if not db.actor then
+		return
+	end
 
-	self.check_time = tg + math.random(500,1000) --+ (self.prior*10)
+	self.t = self.t or db.actor and db.actor:get_task(self.id, true)
+
+	if self.t == nil then -- task is most likely in timeout
+		return
+	end
+
+	-- printf("CHECK TASK RUNNING 2")
+
+	self.check_time = tg + math.random(500, 1000) --+ (self.prior*10)
 	local task_updated = false
 
-  local next_state = self:next_state()
-	
+	local next_state = self:next_state()
+
 	local t_title = next_state.next_title
 	if self.current_title ~= t_title then
 		--printf("task [%s] updated due to title change from [%s] to [%s]", tostring(self.id), tostring(self.current_title), tostring(t_tile))
@@ -399,7 +423,7 @@ function CGeneralTask:check_task(tm)
 	end
 
 	local t_descr = next_state.next_descr
-  self.t:set_description(next_state.descr_full_text) --this makes it so that if location of a target changes you get fresh info
+	self.t:set_description(next_state.descr_full_text) --this makes it so that if location of a target changes you get fresh info
 	if self.current_descr ~= t_descr then
 		--printf("task [%s] updated due to description change from [%s] to [%s]", tostring(self.id), tostring(self.current_descr), tostring(t_descr))
 		task_updated = true
@@ -409,40 +433,40 @@ function CGeneralTask:check_task(tm)
 
 	local t_target = next_state.next_target
 	self:check_level(t_target)
-	
+
 	--printf("%s map_location=%s id=%s target=%s",self.current_title,self.t:get_map_location(),self.t:get_map_object_id(),t_target)
-	
-	if (self.current_target ~= t_target) then
+
+	if self.current_target ~= t_target then
 		task_updated = true
-		if (t_target == nil) then 
+		if t_target == nil then
 			self.t:remove_map_locations(false)
 		else
 			self.t:change_map_location(self.spot, t_target)
-			if(self.storyline) then
+			if self.storyline then
 				level.map_add_object_spot(t_target, "ui_storyline_task_blink", "")
 			else
 				level.map_add_object_spot(t_target, "ui_secondary_task_blink", "")
 			end
 		end
 		self.current_target = t_target
-	end 
-	
-	if task_updated and not(self.dont_send_update_news) then
+	end
+
+	if task_updated and not self.dont_send_update_news then
 		news_manager.send_task(db.actor, "updated", self.t)
 	end
-	
-	for k,v in pairs(self.condlist) do
+
+	for k, v in pairs(self.condlist) do
 		local t = xr_logic.pick_section_from_condlist(db.actor, db.actor, v)
-		if (t) and (t == "complete" or t == "fail" or t == "reversed") then 
+		if t and (t == "complete" or t == "fail" or t == "reversed") then
 			self.last_check_task = t
 			return
 		end
 	end
-	
+
 	-- status functor
-	if (self.status_functor and task_status_functor[self.status_functor]) then 
-		local t = task_status_functor[self.status_functor](self,self.id)
-		if (t) and (t == "complete" or t == "fail" or t == "reversed") then 
+	if self.status_functor and task_status_functor[self.status_functor] then
+		local t = task_status_functor[self.status_functor](self, self.id)
+		if t and (t == "complete" or t == "fail" or t == "reversed") then
 			self.last_check_task = t
 		end
 	end
@@ -456,8 +480,8 @@ function CGeneralTask:give_reward()
 	-- ������� ����� ������ ����� ��������: �� ��� ��� ������ �������� ����. ���� �� ������ ���, � ������� �� � �������, �� ������ ����� � ����
 
 	local npc = get_speaker()
-	if not (npc) then
-		return 
+	if not npc then
+		return
 	end
 
 	if money ~= nil then
@@ -466,14 +490,14 @@ function CGeneralTask:give_reward()
 
 	if items ~= nil then
 		local ancillary_item_table = {}
-		for k,v in pairs(parse_names(items)) do
+		for k, v in pairs(parse_names(items)) do
 			if ancillary_item_table[v] == nil then
 				ancillary_item_table[v] = 1
 			else
 				ancillary_item_table[v] = ancillary_item_table[v] + 1
 			end
 		end
-		for k,v in pairs(ancillary_item_table) do
+		for k, v in pairs(ancillary_item_table) do
 			dialogs.relocate_item_section(npc, k, "in", v)
 		end
 	end
@@ -487,12 +511,12 @@ function CGeneralTask:deactivate_task(tsk)
 
 	self.check_time = nil
 	if self.last_check_task == "fail" then
-		if (self.on_fail) then
+		if self.on_fail then
 			xr_logic.pick_section_from_condlist(db.actor, db.actor, self.on_fail)
 		end
 		news_manager.send_task(db.actor, "fail", tsk)
 	elseif self.last_check_task == "reversed" then
-		if (self.on_reversed) then
+		if self.on_reversed then
 			xr_logic.pick_section_from_condlist(db.actor, db.actor, self.on_reversed)
 		end
 		news_manager.send_task(db.actor, "reversed", tsk)
@@ -502,34 +526,34 @@ function CGeneralTask:deactivate_task(tsk)
 	self.status = "normal"
 end
 function CGeneralTask:check_level(target)
-	if not(db.actor:is_active_task(self.t)) or not(target) then
+	if not (db.actor:is_active_task(self.t)) or not target then
 		return
 	end
-	if not(level) then
+	if not level then
 		return
 	end
 	local s_obj = alife_object(target)
-	if(s_obj) then
+	if s_obj then
 		local target_level = alife():level_name(game_graph():vertex(s_obj.m_game_vertex_id):level_id())
 		local level_name = level.name()
-		if(level_name~=target_level) then
+		if level_name ~= target_level then
 			local guider_id = get_guider(target_level)
-			if not(guider_id) then
+			if not guider_id then
 				return
 			end
 			local guider_spot = ""
 			local guider_spot2 = ""
-			if(self.storyline) then
+			if self.storyline then
 				guider_spot = "storyline_task_on_guider"
 				guider_spot2 = "secondary_task_on_guider"
 			else
 				guider_spot = "secondary_task_on_guider"
 				guider_spot2 = "storyline_task_on_guider"
 			end
-			if(level.map_has_object_spot(guider_id, guider_spot2)~=0) then
+			if level.map_has_object_spot(guider_id, guider_spot2) ~= 0 then
 				level.map_remove_object_spot(guider_id, guider_spot2)
 			end
-			if(guider_id and level.map_has_object_spot(guider_id, guider_spot)==0) then
+			if guider_id and level.map_has_object_spot(guider_id, guider_spot) == 0 then
 				level.map_add_object_spot(guider_id, guider_spot, "")
 			end
 		else
@@ -538,16 +562,16 @@ function CGeneralTask:check_level(target)
 	end
 end
 function CGeneralTask:remove_guider_spot(target)
-	if not(guiders_by_level[level.name()]) then
+	if not guiders_by_level[level.name()] then
 		return
 	end
-	for k,v in pairs(guiders_by_level[level.name()]) do
+	for k, v in pairs(guiders_by_level[level.name()]) do
 		local guider_id = get_story_object_id(v)
-		if(guider_id) then
-			if(level.map_has_object_spot(guider_id, "storyline_task_on_guider")~=0) then
+		if guider_id then
+			if level.map_has_object_spot(guider_id, "storyline_task_on_guider") ~= 0 then
 				level.map_remove_object_spot(guider_id, "storyline_task_on_guider")
 			end
-			if(level.map_has_object_spot(guider_id, "secondary_task_on_guider")~=0) then
+			if level.map_has_object_spot(guider_id, "secondary_task_on_guider") ~= 0 then
 				level.map_remove_object_spot(guider_id, "secondary_task_on_guider")
 			end
 		end
@@ -555,52 +579,52 @@ function CGeneralTask:remove_guider_spot(target)
 end
 -- Save quest
 function CGeneralTask:save(packet)
-	if (USE_MARSHAL) then 
-		return 
+	if USE_MARSHAL then
+		return
 	end
-	
+
 	local id_by_status = {
-		["normal"]		= 0,
-		["selected"]	= 1,
-		["completed"]	= 2,
-		["fail"]		= 3,
-		["reversed"]	= 4
+		["normal"] = 0,
+		["selected"] = 1,
+		["completed"] = 2,
+		["fail"] = 3,
+		["reversed"] = 4,
 	}
 
 	--set_save_marker(packet, "save", false, "CGeneralTask")
-	utils_data.w_stpk(packet,"u8",id_by_status[self.status] or 0,"CGeneralTask:id_by_status")
-	if (self.status == "completed" or self.status == "fail") then
-		if (self.repeat_timeout) then
-			utils_data.w_stpk(packet,"CTime",self.timeout,"CGeneralTask:repeat_timeout")
+	utils_data.w_stpk(packet, "u8", id_by_status[self.status] or 0, "CGeneralTask:id_by_status")
+	if self.status == "completed" or self.status == "fail" then
+		if self.repeat_timeout then
+			utils_data.w_stpk(packet, "CTime", self.timeout, "CGeneralTask:repeat_timeout")
 		end
 		return
-	end 
-	utils_data.w_stpk(packet,"CTime",self.inited_time,"CGeneralTask:inited_time")
-	utils_data.w_stpk(packet,"stringZ",self.current_title,"CGeneralTask:current title")
-	utils_data.w_stpk(packet,"stringZ",self.current_descr,"CGeneralTask:current descr")
-	utils_data.w_stpk(packet,"stringZ",tostring(self.current_target),"CGeneralTask:current target")
-	utils_data.w_stpk(packet,"stringZ",tostring(self.task_giver_id),"CGeneralTask:task giver id")
-	utils_data.w_stpk(packet,"u8",self.stage,"CGeneralTask:current stage")
+	end
+	utils_data.w_stpk(packet, "CTime", self.inited_time, "CGeneralTask:inited_time")
+	utils_data.w_stpk(packet, "stringZ", self.current_title, "CGeneralTask:current title")
+	utils_data.w_stpk(packet, "stringZ", self.current_descr, "CGeneralTask:current descr")
+	utils_data.w_stpk(packet, "stringZ", tostring(self.current_target), "CGeneralTask:current target")
+	utils_data.w_stpk(packet, "stringZ", tostring(self.task_giver_id), "CGeneralTask:task giver id")
+	utils_data.w_stpk(packet, "u8", self.stage, "CGeneralTask:current stage")
 	--set_save_marker(packet, "save", true, "CGeneralTask")
 end
 -- Load quest
 function CGeneralTask:load(packet)
-	if (USE_MARSHAL) then 
-		return 
+	if USE_MARSHAL then
+		return
 	end
-	
+
 	local status_by_id = {
-	[0] = "normal",
-	[1] = "selected",
-	[2] = "completed",
-	[3] = "fail",
-	[4] = "reversed"
+		[0] = "normal",
+		[1] = "selected",
+		[2] = "completed",
+		[3] = "fail",
+		[4] = "reversed",
 	}
 
 	--set_save_marker(packet, "load", false, "CGeneralTask")
 	self.status = status_by_id[packet:r_u8()]
-	if (self.status == "completed" or self.status == "fail") then
-		if (self.repeat_timeout) then 
+	if self.status == "completed" or self.status == "fail" then
+		if self.repeat_timeout then
 			self.timeout = utils_data.r_CTime(packet) or game.get_game_time()
 		end
 		return
@@ -618,15 +642,15 @@ end
 
 function CGeneralTask:save_state(m_data)
 	--utils_data.debug_write(strformat("CGeneralTask:save_state %s BEFORE",self.id))
-	if (self.t == nil) then
-		if (self.repeat_timeout == nil or self.timeout == nil) then 
-			return 
-		end
-		if (game.get_game_time():diffSec(self.timeout) > self.repeat_timeout) then 
+	if self.t == nil then
+		if self.repeat_timeout == nil or self.timeout == nil then
 			return
 		end
-	end 
-	
+		if game.get_game_time():diffSec(self.timeout) > self.repeat_timeout then
+			return
+		end
+	end
+
 	m_data.task_objects[self.id] = {}
 	m_data.task_objects[self.id].status = self.status
 	m_data.task_objects[self.id].timeout = self.timeout
@@ -636,14 +660,14 @@ function CGeneralTask:save_state(m_data)
 	m_data.task_objects[self.id].current_target = self.current_target
 	m_data.task_objects[self.id].stage = self.stage
 	m_data.task_objects[self.id].task_giver_id = self.task_giver_id
-  m_data.task_objects[self.id].history = self.history
+	m_data.task_objects[self.id].history = self.history
 	--utils_data.debug_write(strformat("CGeneralTask:save_state %s AFTER",self.id))
-end 
+end
 
 function CGeneralTask:load_state(m_data)
-	if not (m_data.task_objects and m_data.task_objects[self.id]) then 
+	if not (m_data.task_objects and m_data.task_objects[self.id]) then
 		return false
-	end 
+	end
 	--utils_data.debug_write(strformat("CGeneralTask:load_state %s BEFORE",self.id))
 	self.status = m_data.task_objects[self.id].status
 	self.timeout = m_data.task_objects[self.id].timeout
@@ -652,12 +676,12 @@ function CGeneralTask:load_state(m_data)
 	self.current_descr = m_data.task_objects[self.id].current_descr
 	self.current_target = m_data.task_objects[self.id].current_target
 	self.stage = m_data.task_objects[self.id].stage
-	self.task_giver_id =  m_data.task_objects[self.id].task_giver_id
-  self.history = m_data.task_objects[self.id].history or {}
+	self.task_giver_id = m_data.task_objects[self.id].task_giver_id
+	self.history = m_data.task_objects[self.id].history or {}
 	m_data.task_objects[self.id] = nil
-	
+
 	self.loaded = true
-	
+
 	--utils_data.debug_write(strformat("CGeneralTask:load_state %s AFTER",self.id))
 	return true
-end 
+end

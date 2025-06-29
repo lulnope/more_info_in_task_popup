@@ -1,245 +1,264 @@
 function build_text(se_obj)
-  local lines = {};
+	local lines = {}
 
-  if is_human(se_obj) then
-    lines = build_character_text(se_obj, {
-      rank=true,
-      reputation=miittp_mcm.SHOW_TARGET_REPUTATION,
-      location_and_goal=true
-    })
-  elseif IsMonster(se_obj) then
-    lines = build_location_text(se_obj)
-  elseif IsAnomaly(se_obj) then
-    lines = build_location_text(se_obj)
-  elseif se_obj:clsid() == clsid.smart_terrain then
-    if miittp_mcm.LESS_INFO then
-      lines = build_location_text(se_obj)
-    else
-      lines = build_smart_terrain_text(se_obj)
-    end
-  elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
-    if miittp_mcm.LESS_INFO then
-      lines = build_location_text(se_obj)
-    else
-      lines = build_squad_text(se_obj, false, {
-        rank=true,
-        reputation=miittp_mcm.SHOW_TARGET_REPUTATION,
-        location_and_goal=true
-      })
-    end
-  else
-    if miittp_mcm.DEBUG then
-      lines = {"Unknown clsid: " .. se_obj:clsid() .. " implement description building in miittp_task_text_formatter.script::build_text\\n\\n", unpack(build_location_text(se_obj))}
-    else
-      lines = build_location_text(se_obj)
-    end
-  end
+	if is_human(se_obj) then
+		lines = build_character_text(se_obj, {
+			rank = true,
+			reputation = miittp_mcm.SHOW_TARGET_REPUTATION,
+			location_and_goal = true,
+		})
+	elseif IsMonster(se_obj) then
+		lines = build_location_text(se_obj)
+	elseif IsAnomaly(se_obj) then
+		lines = build_location_text(se_obj)
+	elseif se_obj:clsid() == clsid.smart_terrain then
+		if miittp_mcm.LESS_INFO then
+			lines = build_location_text(se_obj)
+		else
+			lines = build_smart_terrain_text(se_obj)
+		end
+	elseif se_obj:clsid() == clsid.online_offline_group or se_obj:clsid() == clsid.online_offline_group_s then
+		if miittp_mcm.LESS_INFO then
+			lines = build_location_text(se_obj)
+		else
+			lines = build_squad_text(se_obj, false, {
+				rank = true,
+				reputation = miittp_mcm.SHOW_TARGET_REPUTATION,
+				location_and_goal = true,
+			})
+		end
+	else
+		if miittp_mcm.DEBUG then
+			lines = {
+				"Unknown clsid: "
+					.. se_obj:clsid()
+					.. " implement description building in miittp_task_text_formatter.script::build_text\\n\\n",
+				unpack(build_location_text(se_obj)),
+			}
+		else
+			lines = build_location_text(se_obj)
+		end
+	end
 
-  return lines_to_text(lines)
+	return lines_to_text(lines)
 end
 
 function lines_to_text(lines)
-  local indent = miittp_mcm.INDENT
-  local indent_s = indent .. "%s"
-  local format = indent_s .. string.rep(" \\n" .. indent_s, #lines - 1)
-  return strformat(format, unpack(lines))
+	local indent = miittp_mcm.INDENT
+	local indent_s = indent .. "%s"
+	local format = indent_s .. string.rep(" \\n" .. indent_s, #lines - 1)
+	return strformat(format, unpack(lines))
 end
 
-
-function is_human(se_obj) 
-  return IsStalker(se_obj) or se_obj:clsid() == clsid.trader or se_obj:clsid() == clsid.script_trader
+function is_human(se_obj)
+	return IsStalker(se_obj) or se_obj:clsid() == clsid.trader or se_obj:clsid() == clsid.script_trader
 end
 
 function build_smart_terrain_text(smart_terrain)
-  local squad_ids = {}
-  local squad_count = 0
-  for npc_id, _ in pairs(smart_terrain.npc_info) do
-    local npc = alife_object(npc_id)
-    if npc and is_human(npc) and npc.group_id and npc.group_id ~= 65535 then
-      squad_ids[npc.group_id] = true
-      squad_count = squad_count + 1
-    end
-  end
+	local squad_ids = {}
+	local squad_count = 0
+	for npc_id, _ in pairs(smart_terrain.npc_info) do
+		local npc = alife_object(npc_id)
+		if npc and is_human(npc) and npc.group_id and npc.group_id ~= 65535 then
+			squad_ids[npc.group_id] = true
+			squad_count = squad_count + 1
+		end
+	end
 
+	local lines = {}
+	local npc_count = 0
+	for squad_id, _ in pairs(squad_ids) do
+		local squad = alife_object(squad_id)
+		npc_count = npc_count + (squad and squad:npc_count() or 0)
+	end
+	lines[#lines + 1] = game.translate_string("st_task_time_13") .. " " .. npc_count
 
-  local lines = {}
-  local npc_count = 0
-  for squad_id, _ in pairs(squad_ids) do
-    local squad = alife_object(squad_id)
-    npc_count = npc_count + (squad and squad:npc_count() or 0)
-  end
-  lines[#lines + 1] = game.translate_string("st_task_time_13") .. " " .. npc_count
-  
-  if #lines > 1 then
-    lines[#lines + 1] = " "
-  end
-  location_lines = build_location_text(smart_terrain)
-  lines = append_table(lines, location_lines)
+	if #lines > 1 then
+		lines[#lines + 1] = " "
+	end
+	location_lines = build_location_text(smart_terrain)
+	lines = append_table(lines, location_lines)
 
-  return lines
+	return lines
 end
 
 function build_location_text(se_obj, squad)
-  local default_color = utils_xml.get_color("pda_white")
-  local location = dynamic_news_helper.GetPointDescription(se_obj)
+	local default_color = utils_xml.get_color("pda_white")
+	local location = dynamic_news_helper.GetPointDescription(se_obj)
 
-  local current_target = squad and squad.assigned_target_id and alife_object(squad.assigned_target_id)
-  local destination = current_target and dynamic_news_helper.GetPointDescription(current_target)
+	local current_target = squad and squad.assigned_target_id and alife_object(squad.assigned_target_id)
+	local destination = current_target and dynamic_news_helper.GetPointDescription(current_target)
 
-  local location_str = default_color .. game.translate_string("st_location") .. " " .. location
+	local location_str = default_color .. game.translate_string("st_location") .. " " .. location
 
-  if (not destination) or location == destination then
-    return {location_str}
-
-  else
-    return {location_str, default_color .. game.translate_string("st_target") .. ": " .. destination}
-  end
+	if (not destination) or location == destination then
+		return { location_str }
+	else
+		return { location_str, default_color .. game.translate_string("st_target") .. ": " .. destination }
+	end
 end
 
 function build_character_text_single_line(se_obj, options)
-  if not is_human(se_obj) then
-    return {}
-  end
+	if not is_human(se_obj) then
+		return {}
+	end
 
-  local infos = {}
-  local default_color = utils_xml.get_color("pda_white")
+	local infos = {}
+	local default_color = utils_xml.get_color("pda_white")
 
+	local name = se_obj.character_name and se_obj:character_name()
+	if name then
+		local name_str = default_color .. name
+		infos[#infos + 1] = name_str
+	end
 
-  local name = se_obj.character_name and se_obj:character_name()
-  if name then
-    local name_str = default_color .. name
-    infos[#infos + 1] = name_str
-  end
+	local community = se_obj.community and se_obj:community()
+	if community then
+		local faction_color = "%c[255,255,255,1]"
+		if game_relations.is_factions_enemies(db.actor:character_community(), community) then
+			faction_color = "%c[255,255,1,1]"
+		elseif game_relations.is_factions_friends(db.actor:character_community(), community) then
+			faction_color = "%c[255,1,255,1]"
+		end
 
-  local community = se_obj.community and se_obj:community()
-  if community then
-    local faction_color = "%c[255,255,255,1]"
-    if (game_relations.is_factions_enemies(db.actor:character_community(), community)) then
-      faction_color = "%c[255,255,1,1]"
-    elseif (game_relations.is_factions_friends(db.actor:character_community(), community)) then
-      faction_color = "%c[255,1,255,1]"
-    end
+		local faction_str = faction_color .. game.translate_string(community) .. "%c[default]"
+		infos[#infos + 1] = faction_str
+	end
 
-    local faction_str = faction_color .. game.translate_string(community) .. "%c[default]"
-    infos[#infos + 1] = faction_str
-  end
-
-
-  local rank = se_obj.rank and se_obj:rank()
-  if options and options.rank and rank then
-    local rank_str = "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
-    infos[#infos + 1] = rank_str
-  end
+	local rank = se_obj.rank and se_obj:rank()
+	if options and options.rank and rank then
+		local rank_str = "%c[255,215,215,215]"
+			.. game.translate_string("st_rank_" .. ranks.get_se_obj_rank_name(se_obj))
+			.. " %c[255,110,110,255]"
+			.. rank
+			.. "%c[default]"
+		infos[#infos + 1] = rank_str
+	end
 
 	local reputation = se_obj.reputation and se_obj:reputation()
-  if options and options.reputation and reputation then
-    local repu_color = "%c[255,255,255,1]"
-    if (reputation <= -500) then
-      repu_color = "%c[255,255,1,1]"
-    elseif (reputation >= 500) then
-      repu_color = "%c[255,1,255,1]"
-    end
-    local repu_str = repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
-    infos[#infos + 1] = repu_str
-  end
+	if options and options.reputation and reputation then
+		local repu_color = "%c[255,255,255,1]"
+		if reputation <= -500 then
+			repu_color = "%c[255,255,1,1]"
+		elseif reputation >= 500 then
+			repu_color = "%c[255,1,255,1]"
+		end
+		local repu_str = repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
+		infos[#infos + 1] = repu_str
+	end
 
-  local format = "%s" .. string.rep(", %s", #infos -1)
-  return { strformat(format, unpack(infos)) }
+	local format = "%s" .. string.rep(", %s", #infos - 1)
+	return { strformat(format, unpack(infos)) }
 end
 
 function build_character_text(se_obj, options)
-  local lines = {}
-  local default_color = utils_xml.get_color("pda_white")
+	local lines = {}
+	local default_color = utils_xml.get_color("pda_white")
 
-
-  local name = se_obj.character_name and se_obj:character_name()
-  if name then
-    local name_str = default_color .. game.translate_string("st_mm_new_game_name") .. " " .. name
-    lines[#lines + 1] = name_str
-  end
-
-  local community = se_obj.community and se_obj:community()
-  if community then
-    local faction_color = "%c[255,255,255,1]"
-    if (game_relations.is_factions_enemies(db.actor:character_community(), community)) then
-      faction_color = "%c[255,255,1,1]"
-    elseif (game_relations.is_factions_friends(db.actor:character_community(), community)) then
-      faction_color = "%c[255,1,255,1]"
-    end
-
-    local faction_str = default_color .. game.translate_string("ui_st_community") .. ": " .. faction_color .. game.translate_string(community) .. "%c[default]"
-    lines[#lines + 1] = faction_str
-  end
-
-
-  local rank = se_obj.rank and se_obj:rank()
-  if options and options.rank and rank then
-    local rank_str = default_color .. game.translate_string("ui_st_rank") .. ": " .. "%c[255,215,215,215]" .. game.translate_string("st_rank_"..ranks.get_se_obj_rank_name(se_obj)) .. " %c[255,110,110,255]" .. rank .. "%c[default]"
-    lines[#lines + 1] = rank_str
-  end
-
-	local reputation = se_obj.reputation and se_obj:reputation()
-  if options and options.reputation and reputation then
-    local repu_color = "%c[255,255,255,1]"
-    if (reputation <= -500) then
-      repu_color = "%c[255,255,1,1]"
-    elseif (reputation >= 500) then
-      repu_color = "%c[255,1,255,1]"
-    end
-    local repu_str = default_color .. game.translate_string("ui_st_reputation") .. ": " .. repu_color .. game.translate_string(utils_obj.get_reputation_name(reputation)) .. "%c[default]"
-    lines[#lines + 1] = repu_str
-  end
-	if options and options.location_and_goal then	
-    local squad = se_obj.group_id and se_obj.group_id ~= 65535 and alife_object(se_obj.group_id)
-		local location_lines = build_location_text(se_obj, squad)
-    lines = append_table(lines, location_lines)
+	local name = se_obj.character_name and se_obj:character_name()
+	if name then
+		local name_str = default_color .. game.translate_string("st_mm_new_game_name") .. " " .. name
+		lines[#lines + 1] = name_str
 	end
 
-  return lines
+	local community = se_obj.community and se_obj:community()
+	if community then
+		local faction_color = "%c[255,255,255,1]"
+		if game_relations.is_factions_enemies(db.actor:character_community(), community) then
+			faction_color = "%c[255,255,1,1]"
+		elseif game_relations.is_factions_friends(db.actor:character_community(), community) then
+			faction_color = "%c[255,1,255,1]"
+		end
+
+		local faction_str = default_color
+			.. game.translate_string("ui_st_community")
+			.. ": "
+			.. faction_color
+			.. game.translate_string(community)
+			.. "%c[default]"
+		lines[#lines + 1] = faction_str
+	end
+
+	local rank = se_obj.rank and se_obj:rank()
+	if options and options.rank and rank then
+		local rank_str = default_color
+			.. game.translate_string("ui_st_rank")
+			.. ": "
+			.. "%c[255,215,215,215]"
+			.. game.translate_string("st_rank_" .. ranks.get_se_obj_rank_name(se_obj))
+			.. " %c[255,110,110,255]"
+			.. rank
+			.. "%c[default]"
+		lines[#lines + 1] = rank_str
+	end
+
+	local reputation = se_obj.reputation and se_obj:reputation()
+	if options and options.reputation and reputation then
+		local repu_color = "%c[255,255,255,1]"
+		if reputation <= -500 then
+			repu_color = "%c[255,255,1,1]"
+		elseif reputation >= 500 then
+			repu_color = "%c[255,1,255,1]"
+		end
+		local repu_str = default_color
+			.. game.translate_string("ui_st_reputation")
+			.. ": "
+			.. repu_color
+			.. game.translate_string(utils_obj.get_reputation_name(reputation))
+			.. "%c[default]"
+		lines[#lines + 1] = repu_str
+	end
+	if options and options.location_and_goal then
+		local squad = se_obj.group_id and se_obj.group_id ~= 65535 and alife_object(se_obj.group_id)
+		local location_lines = build_location_text(se_obj, squad)
+		lines = append_table(lines, location_lines)
+	end
+
+	return lines
 end
 
 function build_squad_text(obj, force_single_line, options)
-  local lines = miittp_mcm.DEBUG and {"DBG_SQUAD"} or {}
+	local lines = miittp_mcm.DEBUG and { "DBG_SQUAD" } or {}
 
-  if obj:npc_count() == 0 then
-    return lines
-  end
+	if obj:npc_count() == 0 then
+		return lines
+	end
 
-  local squad_members = {}
-  for k in obj:squad_members() do
+	local squad_members = {}
+	for k in obj:squad_members() do
 		local se_obj = k.object or alife_object(k.id)
-    if se_obj then
-      squad_members[#squad_members + 1] = se_obj
+		if se_obj then
+			squad_members[#squad_members + 1] = se_obj
 		end
-  end
+	end
 
-  if obj:npc_count() == 1 and (not force_single_line) then
-    return build_character_text(squad_members[1], options)
-  end
+	if obj:npc_count() == 1 and not force_single_line then
+		return build_character_text(squad_members[1], options)
+	end
 
-  for _,se_obj in pairs(squad_members) do
-    lines = append_table(lines, build_character_text_single_line(se_obj, options))
-  end
+	for _, se_obj in pairs(squad_members) do
+		lines = append_table(lines, build_character_text_single_line(se_obj, options))
+	end
 
-  if options and options.location_and_goal then
-    local location_lines = build_location_text(obj, obj)
-    lines = append_table(lines, location_lines)
-  end
+	if options and options.location_and_goal then
+		local location_lines = build_location_text(obj, obj)
+		lines = append_table(lines, location_lines)
+	end
 
 	return lines
 end
 
 function append_table(dest, src)
-  for i = 1, #src do
-    dest[#dest + 1] = src[i]
-  end
-  return dest
+	for i = 1, #src do
+		dest[#dest + 1] = src[i]
+	end
+	return dest
 end
 
-function concat_tables(t1,t2)
-  local t3 = {unpack(t1)}
-  for i=1,#t2 do
-      t3[#t1+1] = t2[i]
-  end
-  return t3
+function concat_tables(t1, t2)
+	local t3 = { unpack(t1) }
+	for i = 1, #t2 do
+		t3[#t1 + 1] = t2[i]
+	end
+	return t3
 end

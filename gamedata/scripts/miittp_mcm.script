@@ -1,16 +1,34 @@
 function on_mcm_load()
-  return {
-    id = "miittp",
-    sh = true,
-    gr = {
-      { id = "indent",                   type = "input", val = 0, def = "   ", text = "ui_mcm_miittp_indent" },
-      { id = "less_info",                type = "check", val = 1, def = false, text = "ui_mcm_miittp_less_info" },
-      { id = "show_target_reputation",   type = "check", val = 1, def = false, text = "ui_mcm_miittp_show_target_reputation" },
-      { id = "show_task_giver_reputation", type = "check", val = 1, def = false, text = "ui_mcm_miittp_show_task_giver_reputation" },
-      { id = "show_task_giver_rank",     type = "check", val = 1, def = false, text = "ui_mcm_miittp_show_task_giver_rank" },
-      { id = "debug",                    type = "check", val = 1, def = false, text = "ui_mcm_miittp_debug" },
-    }
-  }
+	return {
+		id = "miittp",
+		sh = true,
+		gr = {
+			{ id = "indent", type = "input", val = 0, def = "   ", text = "ui_mcm_miittp_indent" },
+			{ id = "less_info", type = "check", val = 1, def = false, text = "ui_mcm_miittp_less_info" },
+			{
+				id = "show_target_reputation",
+				type = "check",
+				val = 1,
+				def = false,
+				text = "ui_mcm_miittp_show_target_reputation",
+			},
+			{
+				id = "show_task_giver_reputation",
+				type = "check",
+				val = 1,
+				def = false,
+				text = "ui_mcm_miittp_show_task_giver_reputation",
+			},
+			{
+				id = "show_task_giver_rank",
+				type = "check",
+				val = 1,
+				def = false,
+				text = "ui_mcm_miittp_show_task_giver_rank",
+			},
+			{ id = "debug", type = "check", val = 1, def = false, text = "ui_mcm_miittp_debug" },
+		},
+	}
 end
 
 INDENT = "   "
@@ -20,17 +38,16 @@ SHOW_TARGET_REPUTATION = false
 SHOW_TASK_GIVER_REPUTATION = false
 SHOW_TASK_GIVER_RANK = false
 
-
 function load_settings()
-  INDENT = ui_mcm.get("miittp/indent")
-  DEBUG = ui_mcm.get("miittp/debug")
-  LESS_INFO = ui_mcm.get("miittp/less_info")
-  SHOW_TARGET_REPUTATION = ui_mcm.get("miittp/show_target_reputation")
-  SHOW_TASK_GIVER_REPUTATION = ui_mcm.get("miittp/show_task_giver_reputation")
-  SHOW_TASK_GIVER_RANK = ui_mcm.get("miittp/show_task_giver_rank")
+	INDENT = ui_mcm.get("miittp/indent")
+	DEBUG = ui_mcm.get("miittp/debug")
+	LESS_INFO = ui_mcm.get("miittp/less_info")
+	SHOW_TARGET_REPUTATION = ui_mcm.get("miittp/show_target_reputation")
+	SHOW_TASK_GIVER_REPUTATION = ui_mcm.get("miittp/show_task_giver_reputation")
+	SHOW_TASK_GIVER_RANK = ui_mcm.get("miittp/show_task_giver_rank")
 end
 
 function on_game_start()
-  RegisterScriptCallback("on_game_load", load_settings)
-  RegisterScriptCallback("on_option_change", load_settings)
+	RegisterScriptCallback("on_game_load", load_settings)
+	RegisterScriptCallback("on_option_change", load_settings)
 end
